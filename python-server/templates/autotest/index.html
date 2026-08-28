@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+{% block title %}自动化测试中心 - QCC{% endblock %}
+{% block head %}
+<style>
+.autotest-page .card{margin-bottom:var(--qcc-space-lg)}
+.flow-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--qcc-space-lg);margin-bottom:var(--qcc-space-lg)}
+.flow-item{padding:20px;border:1px solid var(--qcc-border-lighter);border-radius:var(--qcc-radius-card);background:linear-gradient(135deg,#f8fbff 0%,#fff 100%);display:flex;flex-direction:column;gap:12px}
+.flow-step{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:rgba(64,158,255,.12);color:var(--qcc-primary);font-weight:var(--qcc-font-weight-bold);font-size:var(--qcc-font-size-lg)}
+.flow-title{font-size:var(--qcc-font-size-md);font-weight:var(--qcc-font-weight-bold);color:var(--qcc-text-primary)}
+.flow-desc{font-size:var(--qcc-font-size-sm);line-height:1.7;color:var(--qcc-text-regular);min-height:66px}
+.tab-header{display:flex;gap:0;border-bottom:2px solid var(--qcc-border-lighter)}
+.tab-btn{padding:12px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit;font-size:var(--qcc-font-size-sm);font-weight:var(--qcc-font-weight-medium);color:var(--qcc-text-placeholder);cursor:pointer;transition:all var(--qcc-transition-base)}
+.tab-btn.active{color:var(--qcc-primary);border-bottom-color:var(--qcc-primary)}
+.tab-panel{padding:var(--qcc-space-xl) 0}
+.config-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--qcc-space-lg);margin-bottom:var(--qcc-space-lg)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}
+.stat-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center}
+.stat-value{font-size:28px;font-weight:700;margin:4px 0}
+.stat-label{font-size:13px;color:#64748b}
+.result-table{width:100%;border-collapse:collapse;font-size:13px}
+.result-table th,.result-table td{padding:8px 12px;border:1px solid #e2e8f0;text-align:left}
+.result-table th{background:#f1f5f9;font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.badge-pass{background:#dcfce7;color:#16a34a}
+.badge-fail{background:#fee2e2;color:#dc2626}
+.badge-error{background:#fef3c7;color:#d97706}
+.badge-skip{background:#f1f5f9;color:#64748b}
+.badge-running{background:#dbeafe;color:#2563eb}
+.badge-pending{background:#f1f5f9;color:#64748b}
+.badge-completed{background:#dcfce7;color:#16a34a}
+.badge-cancelled{background:#f1f5f9;color:#94a3b8}
+.progress-bar{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:4px;transition:width 0.3s ease}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:white;border-radius:16px;padding:24px;max-width:900px;width:90%;max-height:80vh;overflow-y:auto}
+.run-detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.category-group{margin-bottom:16px}
+.category-title{font-weight:600;padding:8px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px}
+</style>
+{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in autotest-page" style="max-width:1400px">
+            {{ hero.page_hero("自动化测试中心", "用例管理 · 执行调度 · 结果采集 · 报告生成") }}
+
+            <!-- Offline Flow -->
+            <div class="flow-grid">
+                <div class="flow-item">
+                    <div class="flow-step">01</div>
+                    <div class="flow-title">导出离线测试包</div>
+                    <div class="flow-desc">选择项目后导出离线测试包，包含测试计划、配置、脚本映射和 Agent 启动入口。</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn btn-primary" onclick="exportAgentPackage('full')">导出完整包（推荐）</button>
+                        <button class="btn btn-secondary" onclick="exportAgentPackage('data')">仅导出数据包</button>
+                    </div>
+                    <div style="margin-top:8px;font-size:12px;color:#64748b">
+                        完整包：包含测试数据 + Agent脚本 + 启动说明，可直接运行<br>
+                        数据包：仅测试数据，需配合已安装的 Agent 使用
+                    </div>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-step">02</div>
+                    <div class="flow-title">现场离线执行</div>
+                    <div class="flow-desc">在被测设备上完成环境采集、自动化脚本执行、人工辅助填写、日志收集。</div>
+                    <button class="btn btn-secondary" onclick="viewRecords()">查看记录</button>
+                </div>
+                <div class="flow-item">
+                    <div class="flow-step">03</div>
+                    <div class="flow-title">导入结果并归档</div>
+                    <div class="flow-desc">上传结果包或配置文件，自动回填测试记录并生成报告。</div>
+                    <button class="btn btn-success" onclick="openReportCenter()">打开报告中心</button>
+                </div>
+            </div>
+
+            <!-- Project Picker -->
+            <div class="card" style="padding:20px;margin-bottom:var(--qcc-space-lg)">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-md)">项目上下文</div>
+                        <div class="text-muted">选择项目后，执行结果可以直接回填到该项目测试记录</div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center">
+                        <select id="project-picker" class="form-select" style="min-width:300px" onchange="onProjectChange()">
+                            <option value="">-- 选择要关联的测试项目 --</option>
+                            {% for p in projects %}
+                            <option value="{{ p.id }}">{{ p.project_code }} - {{ p.product_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-primary" onclick="loadTestPlan()" id="btn-load-plan" disabled>加载测试计划</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div id="statistics-section" style="display:none">
+                <div class="stat-grid">
+                    <div class="stat-card"><div class="stat-value" id="stat-total-runs">0</div><div class="stat-label">总执行次数</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color:#22c55e" id="stat-completed">0</div><div class="stat-label">完成</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color:#ef4444" id="stat-failed">0</div><div class="stat-label">失败</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color:#3b82f6" id="stat-pass-rate">0%</div><div class="stat-label">平均通过率</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-total-tests">0</div><div class="stat-label">总测试项</div></div>
+                    <div class="stat-card"><div class="stat-value" style="color:#22c55e" id="stat-total-passed">0</div><div class="stat-label">总通过</div></div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="card">
+                <div class="tab-header">
+                    <button class="tab-btn active" onclick="switchTab('plan', this)">测试计划</button>
+                    <button class="tab-btn" onclick="switchTab('execute', this)">执行调度</button>
+                    <button class="tab-btn" onclick="switchTab('history', this)">执行历史</button>
+                    <button class="tab-btn" onclick="switchTab('collect', this)">在线采集</button>
+                    <button class="tab-btn" onclick="switchTab('remote', this)">远程执行</button>
+                </div>
+
+                <!-- Tab: Test Plan -->
+                <div class="tab-panel" id="tab-plan">
+                    <div id="plan-content">
+                        <div style="text-align:center;padding:40px;color:#94a3b8">
+                            请先选择项目并点击"加载测试计划"
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Execute -->
+                <div class="tab-panel" id="tab-execute" style="display:none">
+                    <div style="padding:20px">
+                        <h3 style="margin-bottom:16px">创建并执行测试</h3>
+                        <div class="config-grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">
+                            <div class="form-group">
+                                <label class="form-label">测试名称</label>
+                                <input class="form-input" id="run-name" placeholder="留空自动生成">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">执行类型</label>
+                                <select class="form-select" id="run-type">
+                                    <option value="full">全量测试</option>
+                                    <option value="partial">部分测试</option>
+                                    <option value="single">单项测试</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:20px">
+                            <button class="btn btn-primary" onclick="createAndExecute()" id="btn-execute">创建并执行</button>
+                            <button class="btn btn-secondary" onclick="createRunOnly()">仅创建（不执行）</button>
+                        </div>
+                        <div id="execute-progress" style="display:none;margin-top:20px">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                                <span style="font-weight:600">执行进度</span>
+                                <span id="progress-text">执行中...</span>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill" id="progress-bar" style="width:0%;background:#3b82f6"></div></div>
+                        </div>
+                        <div id="execute-result" style="display:none;margin-top:20px"></div>
+                    </div>
+                </div>
+
+                <!-- Tab: History -->
+                <div class="tab-panel" id="tab-history" style="display:none">
+                    <div style="padding:20px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                            <h3>执行历史</h3>
+                            <button class="btn btn-secondary" onclick="loadHistory()">刷新</button>
+                        </div>
+                        <div id="history-list">
+                            <div style="text-align:center;padding:40px;color:#94a3b8">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Collect -->
+                <div class="tab-panel" id="tab-collect" style="display:none">
+                    <div style="padding:20px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                            <div>
+                                <h3>系统信息自动采集</h3>
+                                <div class="text-muted">提取设备环境信息，保存为项目配置或 JSON 文件</div>
+                            </div>
+                            <button class="btn btn-primary" onclick="collectSystem()">一键采集</button>
+                        </div>
+                        <pre id="collect-result" style="background:var(--qcc-bg-page);padding:16px;border-radius:var(--qcc-radius-sm);max-height:400px;overflow:auto;font-size:12px;color:var(--qcc-text-regular)">点击"一键采集"获取系统信息...</pre>
+                    </div>
+                </div>
+
+                <!-- Tab: Remote -->
+                <div class="tab-panel" id="tab-remote" style="display:none">
+                    <div style="padding:20px">
+                        <h3 style="margin-bottom:16px">SSH 远程执行</h3>
+                        <div class="config-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+                            <div class="form-group">
+                                <label class="form-label">主机 IP</label>
+                                <input class="form-input" id="ssh-host" placeholder="192.168.1.100">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">端口</label>
+                                <input class="form-input" id="ssh-port" value="22" type="number">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">用户名</label>
+                                <input class="form-input" id="ssh-user" placeholder="SSH 用户名">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">密码</label>
+                                <input class="form-input" id="ssh-pass" type="password" placeholder="SSH 密码">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:12px;margin-top:16px">
+                            <button class="btn btn-secondary" onclick="callRemote('connect')">测试连接</button>
+                            <button class="btn btn-primary" onclick="callRemote('execute')">执行全部测试</button>
+                        </div>
+                        <pre id="remote-result" style="margin-top:16px;background:var(--qcc-bg-page);padding:16px;border-radius:var(--qcc-radius-sm);max-height:400px;overflow:auto;font-size:12px;color:var(--qcc-text-regular)">连接后结果将显示在这里...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Run Detail Modal -->
+<div id="run-detail-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeRunDetail()">
+    <div class="modal-content">
+        <div id="run-detail-body"></div>
+    </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let currentRunId = null;
+
+// ── 项目选择 ──
+function onProjectChange() {
+    const val = document.getElementById('project-picker').value;
+    currentProjectId = val ? parseInt(val) : null;
+    document.getElementById('btn-load-plan').disabled = !currentProjectId;
+    if (currentProjectId) {
+        loadStatistics();
+    } else {
+        document.getElementById('statistics-section').style.display = 'none';
+    }
+}
+
+function getSelectedProjectId() {
+    const val = document.getElementById('project-picker').value;
+    return val ? parseInt(val) : null;
+}
+
+// ── Tab 切换 ──
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = '';
+    btn.classList.add('active');
+
+    if (name === 'history') loadHistory();
+}
+
+// ── 测试计划 ──
+function loadTestPlan() {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+
+    fetch('/api/autotest/plan/' + pid)
+        .then(r => r.json())
+        .then(d => {
+            if (d.code === 200) renderTestPlan(d.data);
+            else showToast(d.message, 'error');
+        })
+        .catch(e => showToast('加载失败: ' + e.message, 'error'));
+}
+
+function renderTestPlan(plan) {
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:0 4px">
+            <div>
+                <h3 style="margin:0">测试计划 — ${plan.project_code}</h3>
+                <div class="text-muted" style="margin-top:4px">共 ${plan.total_items} 项（自动 ${plan.auto_items} / 手动 ${plan.manual_items}）</div>
+            </div>
+            <button class="btn btn-primary" onclick="createAndExecute()">一键执行全部</button>
+        </div>`;
+
+    for (const cat of plan.categories) {
+        html += `<div class="category-group">
+            <div class="category-title">${cat.name}（${cat.items.length} 项）</div>
+            <table class="result-table">
+                <thead><tr><th style="width:80px">编号</th><th>测试项</th><th style="width:80px">方式</th><th style="width:100px">脚本</th></tr></thead>
+                <tbody>`;
+        for (const item of cat.items) {
+            const modeClass = item.execute_mode === 'auto' ? 'badge-pass' : 'badge-skip';
+            html += `<tr>
+                <td>${item.item_no}</td>
+                <td>${item.test_item}</td>
+                <td><span class="badge ${modeClass}">${item.execute_mode}</span></td>
+                <td style="font-size:11px;color:#64748b">${item.test_case || '-'}</td>
+            </tr>`;
+        }
+        html += `</tbody></table></div>`;
+    }
+    document.getElementById('plan-content').innerHTML = html;
+}
+
+// ── 统计 ──
+function loadStatistics() {
+    fetch('/api/autotest/statistics?project_id=' + currentProjectId)
+        .then(r => r.json())
+        .then(d => {
+            if (d.code === 200) {
+                const s = d.data;
+                document.getElementById('stat-total-runs').textContent = s.total_runs;
+                document.getElementById('stat-completed').textContent = s.completed_runs;
+                document.getElementById('stat-failed').textContent = s.failed_runs;
+                document.getElementById('stat-pass-rate').textContent = s.avg_pass_rate + '%';
+                document.getElementById('stat-total-tests').textContent = s.total_tests;
+                document.getElementById('stat-total-passed').textContent = s.total_passed;
+                document.getElementById('statistics-section').style.display = '';
+            }
+        });
+}
+
+// ── 执行调度 ──
+function createAndExecute() {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+
+    const name = document.getElementById('run-name').value;
+    const type = document.getElementById('run-type').value;
+
+    document.getElementById('btn-execute').disabled = true;
+    document.getElementById('execute-progress').style.display = '';
+    document.getElementById('execute-result').style.display = 'none';
+    document.getElementById('progress-bar').style.width = '10%';
+    document.getElementById('progress-text').textContent = '创建测试运行...';
+
+    fetch('/api/autotest/run/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({project_id: pid, run_name: name, run_type: type})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.code !== 200) {
+            showToast(d.message, 'error');
+            document.getElementById('btn-execute').disabled = false;
+            return;
+        }
+        currentRunId = d.data.run_id;
+        document.getElementById('progress-bar').style.width = '30%';
+        document.getElementById('progress-text').textContent = '执行中... (' + d.data.total_items + ' 项)';
+
+        return fetch('/api/autotest/run/' + d.data.run_id + '/execute', {method: 'POST'});
+    })
+    .then(r => r ? r.json() : null)
+    .then(d => {
+        if (!d) return;
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-bar').style.background = d.data.pass_rate >= 90 ? '#22c55e' : d.data.pass_rate >= 70 ? '#f59e0b' : '#ef4444';
+
+        const summary = d.data;
+        document.getElementById('progress-text').textContent = '完成！通过率 ' + summary.pass_rate + '%';
+        document.getElementById('execute-result').style.display = '';
+        document.getElementById('execute-result').innerHTML = `
+            <div class="stat-grid">
+                <div class="stat-card"><div class="stat-value" style="color:#22c55e">${summary.passed}</div><div class="stat-label">通过</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:#ef4444">${summary.failed}</div><div class="stat-label">失败</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:#f59e0b">${summary.error}</div><div class="stat-label">错误</div></div>
+                <div class="stat-card"><div class="stat-value">${summary.skipped}</div><div class="stat-label">跳过</div></div>
+                <div class="stat-card"><div class="stat-value">${summary.pass_rate}%</div><div class="stat-label">通过率</div></div>
+                <div class="stat-card"><div class="stat-value">${summary.duration}s</div><div class="stat-label">耗时</div></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px">
+                <button class="btn btn-primary" onclick="viewRunDetail(${summary.run_id})">查看详情</button>
+                <button class="btn btn-secondary" onclick="viewRunReport(${summary.run_id})">查看报告</button>
+            </div>`;
+        document.getElementById('btn-execute').disabled = false;
+        loadStatistics();
+    })
+    .catch(e => {
+        showToast('执行失败: ' + e.message, 'error');
+        document.getElementById('btn-execute').disabled = false;
+        document.getElementById('progress-bar').style.background = '#ef4444';
+        document.getElementById('progress-text').textContent = '执行失败';
+    });
+}
+
+function createRunOnly() {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+
+    const name = document.getElementById('run-name').value;
+    const type = document.getElementById('run-type').value;
+
+    fetch('/api/autotest/run/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({project_id: pid, run_name: name, run_type: type})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.code === 200) {
+            showToast('测试运行已创建（ID: ' + d.data.run_id + '）', 'success');
+            loadHistory();
+        } else {
+            showToast(d.message, 'error');
+        }
+    });
+}
+
+// ── 执行历史 ──
+function loadHistory() {
+    const pid = getSelectedProjectId();
+    const url = pid ? '/api/autotest/runs?project_id=' + pid + '&size=50' : '/api/autotest/runs?size=50';
+
+    fetch(url)
+        .then(r => r.json())
+        .then(d => {
+            if (d.code === 200) renderHistory(d.data.runs);
+        });
+}
+
+function renderHistory(runs) {
+    if (!runs.length) {
+        document.getElementById('history-list').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">暂无执行记录</div>';
+        return;
+    }
+    let html = '<table class="result-table"><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>通过率</th><th>通过/失败</th><th>耗时</th><th>时间</th><th>操作</th></tr></thead><tbody>';
+    for (const r of runs) {
+        const statusClass = 'badge-' + (r.status === 'completed' ? 'completed' : r.status === 'running' ? 'running' : r.status === 'failed' ? 'fail' : 'pending');
+        const rateColor = r.pass_rate >= 90 ? '#22c55e' : r.pass_rate >= 70 ? '#f59e0b' : '#ef4444';
+        html += `<tr>
+            <td>${r.id}</td>
+            <td>${r.run_name || '-'}</td>
+            <td>${r.run_type}</td>
+            <td><span class="badge ${statusClass}">${r.status}</span></td>
+            <td style="color:${rateColor};font-weight:600">${r.pass_rate}%</td>
+            <td>${r.passed_items}/${r.failed_items}</td>
+            <td>${r.duration_seconds}s</td>
+            <td style="font-size:12px">${r.created_at ? r.created_at.substring(0, 19) : '-'}</td>
+            <td>
+                <button class="btn btn-sm" onclick="viewRunDetail(${r.id})" style="padding:4px 8px;font-size:12px">详情</button>
+                <button class="btn btn-sm" onclick="viewRunReport(${r.id})" style="padding:4px 8px;font-size:12px">报告</button>
+                <button class="btn btn-sm" onclick="deleteRun(${r.id})" style="padding:4px 8px;font-size:12px;color:#ef4444">删除</button>
+            </td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('history-list').innerHTML = html;
+}
+
+// ── 运行详情 ──
+function viewRunDetail(runId) {
+    fetch('/api/autotest/run/' + runId)
+        .then(r => r.json())
+        .then(d => {
+            if (d.code === 200) renderRunDetail(d.data);
+        });
+}
+
+function renderRunDetail(run) {
+    const statusColors = {Pass:'#22c55e', Fail:'#ef4444', Error:'#f59e0b', Skipped:'#94a3b8', Pending:'#94a3b8'};
+    let resultsByCategory = {};
+    for (const r of run.results) {
+        if (!resultsByCategory[r.category_name]) resultsByCategory[r.category_name] = [];
+        resultsByCategory[r.category_name].push(r);
+    }
+
+    let html = `
+        <div class="run-detail-header">
+            <div>
+                <h2 style="margin:0">${run.run_name}</h2>
+                <div style="margin-top:8px;display:flex;gap:16px;color:#64748b;font-size:13px">
+                    <span>ID: ${run.id}</span>
+                    <span>类型: ${run.run_type}</span>
+                    <span>状态: ${run.status}</span>
+                    <span>耗时: ${run.duration_seconds}s</span>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="closeRunDetail()">关闭</button>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card"><div class="stat-value">${run.total_items}</div><div class="stat-label">总项数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:#22c55e">${run.passed_items}</div><div class="stat-label">通过</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:#ef4444">${run.failed_items}</div><div class="stat-label">失败</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:#f59e0b">${run.error_items}</div><div class="stat-label">错误</div></div>
+            <div class="stat-card"><div class="stat-value">${run.skipped_items}</div><div class="stat-label">跳过</div></div>
+            <div class="stat-card"><div class="stat-value">${run.pass_rate}%</div><div class="stat-label">通过率</div></div>
+        </div>`;
+
+    for (const [catName, items] of Object.entries(resultsByCategory)) {
+        html += `<div class="category-group"><div class="category-title">${catName}</div>
+            <table class="result-table"><thead><tr><th>编号</th><th>测试项</th><th>方式</th><th>结果</th><th>备注</th><th>耗时</th></tr></thead><tbody>`;
+        for (const item of items) {
+            const color = statusColors[item.result] || '#94a3b8';
+            html += `<tr>
+                <td>${item.item_no}</td><td>${item.test_item}</td>
+                <td><span class="badge ${item.execute_mode === 'auto' ? 'badge-pass' : 'badge-skip'}">${item.execute_mode}</span></td>
+                <td style="color:${color};font-weight:600">${item.result}</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.comment || item.error_detail || '-'}</td>
+                <td>${item.duration_ms}ms</td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+
+    document.getElementById('run-detail-body').innerHTML = html;
+    document.getElementById('run-detail-modal').style.display = '';
+}
+
+function closeRunDetail() {
+    document.getElementById('run-detail-modal').style.display = 'none';
+}
+
+// ── 报告 ──
+function viewRunReport(runId) {
+    window.open('/api/autotest/run/' + runId + '/report/html', '_blank');
+}
+
+// ── 删除 ──
+function deleteRun(runId) {
+    if (!confirm('确定删除此测试运行记录？')) return;
+    fetch('/api/autotest/run/' + runId, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(d => {
+            if (d.code === 200) {
+                showToast('已删除', 'success');
+                loadHistory();
+                loadStatistics();
+            } else {
+                showToast(d.message, 'error');
+            }
+        });
+}
+
+// ── 在线采集 ──
+function collectSystem() {
+    document.getElementById('collect-result').textContent = '采集中...';
+    fetch('/api/autotest/system/collect')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('collect-result').textContent = JSON.stringify(d.data || d, null, 2);
+        })
+        .catch(e => {
+            document.getElementById('collect-result').textContent = '采集失败: ' + e.message;
+        });
+}
+
+// ── 远程执行 ──
+function callRemote(action) {
+    const body = {
+        host: document.getElementById('ssh-host').value,
+        port: parseInt(document.getElementById('ssh-port').value) || 22,
+        username: document.getElementById('ssh-user').value,
+        password: document.getElementById('ssh-pass').value
+    };
+    document.getElementById('remote-result').textContent = '执行中...';
+    fetch('/api/remote/' + action, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(d => {
+        document.getElementById('remote-result').textContent = JSON.stringify(d, null, 2);
+    }).catch(e => {
+        document.getElementById('remote-result').textContent = 'Error: ' + e.message;
+    });
+}
+
+// ── 导出/跳转 ──
+function exportAgentPackage(packageType) {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+    const type = packageType || 'full';
+    const typeName = type === 'full' ? '完整包' : '数据包';
+    showToast('正在导出' + typeName + '...', 'info');
+    window.open('/api/projects/' + pid + '/export-agent?package_type=' + type, '_blank');
+}
+function viewRecords() {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+    location.href = '/page/projects/' + pid + '/records';
+}
+function openReportCenter() {
+    const pid = getSelectedProjectId();
+    if (!pid) return showToast('请先选择项目', 'warning');
+    location.href = '/page/projects/' + pid + '/report/preview';
+}
+</script>
+{% endblock %}

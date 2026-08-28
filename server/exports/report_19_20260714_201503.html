@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TFPC/PVC-N-18-R01 — 1 测试报告</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #333; line-height: 1.6; background: #f5f7fa; }
+.report-container { max-width: 1000px; margin: 0 auto; background: #fff; }
+.cover { text-align: center; padding: 80px 40px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: #fff; page-break-after: always; }
+.cover h1 { font-size: 28px; margin-bottom: 10px; }
+.cover h2 { font-size: 20px; font-weight: 400; margin-bottom: 40px; opacity: 0.9; }
+.cover .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 30px; text-align: left; max-width: 500px; margin: 0 auto; }
+.cover .info-label { opacity: 0.7; font-size: 13px; }
+.cover .info-value { font-size: 15px; font-weight: 500; }
+.section { padding: 30px 40px; border-bottom: 1px solid #eee; }
+.section:last-child { border-bottom: none; }
+.section-title { font-size: 18px; color: #1e3a5f; border-left: 4px solid #2d5a87; padding-left: 12px; margin-bottom: 20px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card { background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
+.stat-value { font-size: 28px; font-weight: 700; color: #1e3a5f; }
+.stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+.stat-card.pass .stat-value { color: #16a34a; }
+.stat-card.fail .stat-value { color: #dc2626; }
+.stat-card.warn .stat-value { color: #f59e0b; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; }
+td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+tr:hover { background: #f8fafc; }
+.result-pass { color: #16a34a; font-weight: 600; }
+.result-fail { color: #dc2626; font-weight: 600; }
+.result-blocked { color: #f59e0b; font-weight: 600; }
+.result-na { color: #64748b; }
+.header-row { background: #e8eef6; font-weight: 600; }
+.bug-sev-critical { background: #fecaca; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.bug-sev-high { background: #fed7aa; color: #9a3412; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.bug-sev-medium { background: #fef08a; color: #854d0e; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.bug-sev-low { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.bug-status-open { color: #dc2626; }
+.bug-status-closed { color: #16a34a; }
+.conclusion-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; }
+.conclusion-box.fail { background: #fef2f2; border-color: #fecaca; }
+.footer { text-align: center; padding: 20px; color: #94a3b8; font-size: 12px; border-top: 1px solid #eee; }
+@media print {
+    body { background: #fff; }
+    .report-container { box-shadow: none; }
+    .section { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="report-container">
+
+<!-- 封面 -->
+<div class="cover">
+    <h1>TFPC/PVC-N-18-R01</h1>
+    <h2>1</h2>
+    <div class="info-grid">
+        <div><div class="info-label">项目编号</div><div class="info-value">RPT-20260714-003</div></div>
+        <div><div class="info-label">产品型号</div><div class="info-value">1 </div></div>
+        <div><div class="info-label">测试人员</div><div class="info-value">1 </div></div>
+        <div><div class="info-label">审核人员</div><div class="info-value">1</div></div>
+        <div><div class="info-label">测试周期</div><div class="info-value">— ~ —</div></div>
+        <div><div class="info-label">生成时间</div><div class="info-value">2026-07-14 20:15:03</div></div>
+    </div>
+</div>
+
+<!-- 测试概况 -->
+<div class="section">
+    <h2 class="section-title">一、测试概况</h2>
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">8</div><div class="stat-label">测试总数</div></div>
+        <div class="stat-card pass"><div class="stat-value">8</div><div class="stat-label">通过</div></div>
+        <div class="stat-card fail"><div class="stat-value">0</div><div class="stat-label">失败</div></div>
+        <div class="stat-card warn"><div class="stat-value">100.0%</div><div class="stat-label">通过率</div></div>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">阻塞</div></div>
+        <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">不适用</div></div>
+        <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">错误</div></div>
+        <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">未测试</div></div>
+    </div>
+</div>
+
+<!-- 分类测试结果 -->
+<div class="section">
+    <h2 class="section-title">二、测试结果明细</h2>
+    <h3 style="margin: 20px 0 10px; color: #334155;">CPU基本信息（通过率 100.0%，4/4）</h3>
+    <table>
+        <thead><tr><th style="width:60px">编号</th><th>测试项目</th><th>测试条件</th><th>判定标准</th><th style="width:80px">结果</th><th>备注</th></tr></thead>
+        <tbody><tr class="header-row"><td colspan="6">1 CPU识别</td></tr><tr>
+                    <td>1.1</td>
+                    <td>CPU型号识别</td>
+                    <td>CPU型号</td>
+                    <td>CPU型号与规格一致</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr><tr>
+                    <td>1.2</td>
+                    <td>CPU频率</td>
+                    <td>CPU频率</td>
+                    <td>频率在规格范围内</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr><tr>
+                    <td>1.3</td>
+                    <td>核心数</td>
+                    <td>核心数</td>
+                    <td>核心数与规格一致</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr><tr>
+                    <td>1.4</td>
+                    <td>CPU缓存</td>
+                    <td>CPU缓存</td>
+                    <td>缓存大小正确</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr></tbody></table>
+    <h3 style="margin: 20px 0 10px; color: #334155;">CPU性能测试（通过率 100.0%，2/2）</h3>
+    <table>
+        <thead><tr><th style="width:60px">编号</th><th>测试项目</th><th>测试条件</th><th>判定标准</th><th style="width:80px">结果</th><th>备注</th></tr></thead>
+        <tbody><tr class="header-row"><td colspan="6">1 基准测试</td></tr><tr>
+                    <td>1.1</td>
+                    <td>单核性能</td>
+                    <td>单核性能</td>
+                    <td>成绩在预期范围内</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr><tr>
+                    <td>1.2</td>
+                    <td>多核性能</td>
+                    <td>多核性能</td>
+                    <td>成绩在预期范围内</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr></tbody></table>
+    <h3 style="margin: 20px 0 10px; color: #334155;">CPU压力测试（通过率 100.0%，2/2）</h3>
+    <table>
+        <thead><tr><th style="width:60px">编号</th><th>测试项目</th><th>测试条件</th><th>判定标准</th><th style="width:80px">结果</th><th>备注</th></tr></thead>
+        <tbody><tr class="header-row"><td colspan="6">1 压力测试</td></tr><tr>
+                    <td>1.1</td>
+                    <td>满载运行</td>
+                    <td>CPU满载</td>
+                    <td>无蓝屏、死机，温度在安全范围内</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr><tr>
+                    <td>1.2</td>
+                    <td>温度监控</td>
+                    <td>温度监控</td>
+                    <td>温度不超过Tjmax</td>
+                    <td><span class="result-pass">Pass</span></td>
+                    <td></td>
+                </tr></tbody></table></div>
+<!-- 测试结论 -->
+<div class="section">
+    <h2 class="section-title">三、测试结论</h2>
+    <div class="conclusion-box ">
+        <p style="font-size: 15px;">待填写</p>
+    </div>
+</div>
+
+<div class="footer">
+    <p>本报告由 QCC 测试报告自动化平台生成 | 2026-07-14 20:15:03</p>
+</div>
+
+</div>
+</body>
+</html>

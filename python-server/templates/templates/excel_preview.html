@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}模板预览 - QCC{% endblock %}
+{% block body %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1400px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                <a href="/page/templates" class="btn btn-ghost btn-sm">← 返回模板列表</a>
+                <h1 class="page-title" id="page-title" style="font-size:18px">模板预览</h1>
+            </div>
+
+            <div id="loading" style="text-align:center;padding:60px;color:var(--qcc-text-muted)">
+                <div class="spinner" style="margin:0 auto 12px;width:28px;height:28px;border:3px solid var(--qcc-border-light);border-top-color:var(--qcc-primary);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                正在加载模板内容...
+            </div>
+
+            <div id="error-msg" style="display:none;text-align:center;padding:60px"></div>
+
+            <div id="content" style="display:none">
+                <!-- Sheet切换 -->
+                <div x-data="{ activeSheet: '' }">
+                    <div id="sheet-tabs" style="display:flex;gap:4px;border-bottom:2px solid var(--qcc-border-light);margin-bottom:20px;overflow-x:auto"></div>
+                    <div id="sheet-panels"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.excel-table { width:100%; border-collapse:collapse; font-size:13px; }
+.excel-table th { background:#f1f5f9; color:#475569; font-weight:600; text-align:left; padding:8px 12px; border:1px solid #e2e8f0; position:sticky; top:0; }
+.excel-table td { padding:6px 10px; border:1px solid #e2e8f0; white-space:nowrap; max-width:300px; overflow:hidden; text-overflow:ellipsis; }
+.excel-table tr:nth-child(even) { background:#f8fafc; }
+.excel-table tr:hover { background:#eff6ff; }
+.sheet-tab { padding:8px 16px; cursor:pointer; border:1px solid transparent; border-bottom:none; border-radius:var(--qcc-radius-md) var(--qcc-radius-md) 0 0; font-size:13px; color:var(--qcc-text-secondary); background:transparent; transition:all 0.2s; white-space:nowrap; }
+.sheet-tab:hover { background:var(--qcc-bg-hover); color:var(--qcc-text-primary); }
+.sheet-tab.active { background:#fff; color:var(--qcc-primary); font-weight:600; border-color:var(--qcc-border-light); border-bottom:2px solid #fff; margin-bottom:-2px; }
+</style>
+
+<script>
+const FILENAME = new URLSearchParams(window.location.search).get('file');
+if (!FILENAME) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-msg').innerHTML = '<p style="color:var(--qcc-danger)">未指定文件参数</p>';
+    document.getElementById('error-msg').style.display = '';
+}
+
+async function loadPreview() {
+    if (!FILENAME) return;
+    document.getElementById('page-title').textContent = '模板预览 — ' + FILENAME;
+
+    try {
+        const resp = await fetch(`/api/excel-templates/${encodeURIComponent(FILENAME)}/preview`);
+        const data = await resp.json();
+
+        if (data.code !== 200) {
+            throw new Error(data.message || '加载失败');
+        }
+
+        const sheets = data.data.sheets;
+        if (!sheets || sheets.length === 0) {
+            throw new Error('文件中没有Sheet数据');
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = '';
+
+        // 渲染Sheet标签
+        const tabsEl = document.getElementById('sheet-tabs');
+        tabsEl.innerHTML = sheets.map((s, i) =>
+            `<button class="sheet-tab ${i===0?'active':''}" onclick="showSheet(${i}, this)">${s.sheet_name}</button>`
+        ).join('');
+
+        // 渲染Sheet内容
+        const panelsEl = document.getElementById('sheet-panels');
+        panelsEl.innerHTML = sheets.map((s, i) => {
+            const headers = s.headers || [];
+            const rows = s.rows || [];
+            let tableHtml = `<div class="sheet-panel" id="sheet-${i}" style="${i>0?'display:none':''}">
+                <div style="margin-bottom:8px;font-size:12px;color:var(--qcc-text-secondary)">
+                    共 ${s.total_rows} 行 × ${s.total_cols} 列 | 显示前 ${rows.length} 行
+                </div>
+                <div style="overflow-x:auto;border:1px solid var(--qcc-border-light);border-radius:var(--qcc-radius-md)">
+                <table class="excel-table">
+                    <thead><tr>`;
+            headers.forEach(h => { tableHtml += `<th>${h || '&nbsp;'}</th>`; });
+            tableHtml += '</tr></thead><tbody>';
+            rows.forEach(row => {
+                tableHtml += '<tr>';
+                row.forEach(cell => { tableHtml += `<td title="${cell}">${cell || '&nbsp;'}</td>`; });
+                // 补齐列数
+                for (let j = row.length; j < headers.length; j++) { tableHtml += '<td>&nbsp;</td>'; }
+                tableHtml += '</tr>';
+            });
+            if (rows.length === 0) {
+                tableHtml += `<tr><td colspan="${headers.length || 1}" style="text-align:center;color:var(--qcc-text-muted);padding:20px">无数据行</td></tr>`;
+            }
+            tableHtml += '</tbody></table></div></div>';
+            return tableHtml;
+        }).join('');
+
+    } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-msg').innerHTML = `
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--qcc-danger)" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <p style="color:var(--qcc-danger);font-size:15px">${err.message}</p>
+            <a href="/page/templates" class="btn btn-primary" style="margin-top:12px">返回模板列表</a>
+        `;
+        document.getElementById('error-msg').style.display = '';
+    }
+}
+
+function showSheet(index, btn) {
+    // 切换标签高亮
+    document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    // 切换内容
+    document.querySelectorAll('.sheet-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('sheet-' + index).style.display = '';
+}
+
+loadPreview();
+</script>
+{% endblock %}

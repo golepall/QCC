@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ project.project_code }} - QCC{% endblock %}
+{% block body %}
+{% import "components/status_tags.html" as st %}
+
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1200px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                <a href="/page/projects" class="btn btn-ghost btn-sm">← 返回</a>
+                {{ st.project_status(project.status) }}
+                <div style="flex:1"></div>
+                <a href="/page/projects/{{ project.id }}/report/preview" class="btn btn-primary btn-sm" style="background:var(--qcc-success)">生成报告</a>
+                <button class="btn btn-danger btn-sm"
+                        hx-delete="/page/projects/{{ project.id }}/delete"
+                        hx-confirm="确认删除项目 {{ project.project_code }}？"
+                        hx-swap="none"
+                        x-on:htmx-after-request="if(event.detail.successful){showToast('删除成功','success');setTimeout(()=>location.href='/page/projects',800)}"
+                        x-on:htmx-response-error="showToast('删除失败','error')">
+                    删除项目</button>
+            </div>
+            <h1 style="font-size:var(--qcc-font-size-3xl);font-weight:var(--qcc-font-weight-bold);margin-bottom:4px">{{ project.project_code }}</h1>
+            <p class="text-muted">{{ project.product_name }} · {{ project.template_name }}</p>
+
+            <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                <div class="stat-card"><div class="stat-label">产品型号</div><div class="stat-value" style="font-size:16px">{{ project.product_model }}</div></div>
+                <div class="stat-card"><div class="stat-label">测试员</div><div class="stat-value" style="font-size:16px">{{ project.tester }}</div></div>
+                <div class="stat-card"><div class="stat-label">测试类型</div><div class="stat-value" style="font-size:16px">{{ project.test_type }}</div></div>
+                <div class="stat-card"><div class="stat-label">开始日期</div><div class="stat-value" style="font-size:16px">{{ project.start_date or '-' }}</div></div>
+            </div>
+
+            <!-- 测试进度概览 -->
+            <div class="card" style="margin-bottom:var(--qcc-space-xl)">
+                <div class="card-header"><h3>测试进度</h3>
+                    <a href="/page/projects/{{ project.id }}/records" class="btn btn-primary btn-sm">填写记录</a>
+                </div>
+                <div class="card-body">
+                    {% set ov = record_stats.overall %}
+                    {% set total = ov.total|int %}
+                    {% set pct = (ov.pass|int / total * 100)|round|int if total>0 else 0 %}
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+                        <div class="progress" style="width:200px;height:12px"><div class="progress-bar {% if pct>=80 %}progress-success{% elif pct>=50 %}progress-warning{% else %}progress-primary{% endif %}" style="width:{{ pct }}%"></div></div>
+                        <span style="font-weight:var(--qcc-font-weight-semibold)">{{ pct }}%</span>
+                        <span class="text-muted">{{ ov.pass|int }}/{{ total }} 项通过</span>
+                    </div>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap">
+                        <span class="tag tag-success">通过 {{ ov.pass|int }}</span>
+                        <span class="tag tag-danger">失败 {{ ov.fail|int }}</span>
+                        <span class="tag tag-info">不适用 {{ ov.na|int }}</span>
+                        <span class="tag tag-warning">阻塞 {{ ov.blocked|int }}</span>
+                        <span class="tag tag-info">未测试 {{ ov.pending|int }}</span>
+                    </div>
+
+                    {% if record_stats.categories %}
+                    <div style="margin-top:16px">
+                        <table class="table" style="font-size:var(--qcc-font-size-xs)">
+                            <thead><tr><th>分类</th><th>总数</th><th>通过</th><th>失败</th><th>进度</th></tr></thead>
+                            <tbody>
+                            {% for cat in record_stats.categories %}
+                            <tr>
+                                <td>{{ cat.category_name }}</td>
+                                <td>{{ cat.total }}</td>
+                                <td style="color:var(--qcc-success)">{{ cat.pass }}</td>
+                                <td style="color:var(--qcc-danger)">{{ cat.fail }}</td>
+                                <td>
+                                    {% set cat_pct = (cat.pass / cat.total * 100)|round|int if cat.total>0 else 0 %}
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                        <div class="progress" style="width:60px"><div class="progress-bar progress-success" style="width:{{ cat_pct }}%"></div></div>
+                                        <span class="text-muted">{{ cat_pct }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Bug 列表 -->
+            <div class="card">
+                <div class="card-header"><h3>Bug 列表 ({{ bug_total }})</h3></div>
+                <div class="card-body" style="padding:0">
+                    {% if bugs %}
+                    <table class="table">
+                        <thead><tr><th>Bug ID</th><th>标题</th><th>级别</th><th>状态</th><th>日期</th></tr></thead>
+                        <tbody>
+                        {% for b in bugs %}
+                        <tr>
+                            <td><span class="text-mono">{{ b.bug_id }}</span></td>
+                            <td>{{ b.title }}</td>
+                            <td>{{ st.bug_severity(b.severity) }}</td>
+                            <td>{{ st.bug_status(b.status) }}</td>
+                            <td class="text-muted">{{ b.open_date or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state"><div class="empty-icon">🐛</div><div class="empty-title">暂无 Bug</div><div class="empty-desc">测试过程中发现的缺陷将在此展示</div></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

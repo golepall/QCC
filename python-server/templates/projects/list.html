@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}项目列表 - QCC{% endblock %}
+{% block body %}
+{% import "components/status_tags.html" as st %}
+{% import "components/page_hero.html" as hero %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main"><div class="app-content animate-in" style="max-width:1200px">
+        {{ hero.page_hero("项目列表", "共 " ~ total ~ " 个测试项目") }}
+
+        <div class="table-toolbar">
+            <div class="toolbar-left">
+                <a href="/page/projects/create" class="btn btn-primary">+ 创建项目</a>
+                <select name="status" class="form-select" hx-get="/page/projects/list" hx-target="#tbl" hx-trigger="change" hx-include="[name='keyword']">
+                    <option value="">全部状态</option>
+                    <option value="draft">草稿</option><option value="testing">测试中</option>
+                    <option value="completed">已完成</option><option value="archived">已归档</option>
+                </select>
+                <input name="keyword" class="form-input" placeholder="搜索编号/型号/名称..." style="width:240px" hx-get="/page/projects/list" hx-target="#tbl" hx-trigger="keyup changed delay:300ms" hx-include="[name='status']">
+            </div>
+        </div>
+
+        <div class="card" id="tbl"><div class="table-wrap">{% include "components/project_table.html" %}</div></div>
+    </div></main>
+</div>
+{% endblock %}

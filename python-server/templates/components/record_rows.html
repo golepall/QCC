@@ -1,0 +1,50 @@
+{% for cat_id, cat_data in records.items() %}
+{% set items = cat_data.test_items %}
+{% for item in items %}
+{% if item.is_header %}
+<div class="section-header">{{ item.item_no }} {{ item.test_item }}</div>
+{% else %}
+{% set rid = item.record.id if item.record.id is defined and item.record.id else '' %}
+{% if rid %}
+<div class="item-row" id="row-{{ rid }}">
+    <div class="item-no">{{ item.item_no }}</div>
+    <div>
+        <div class="item-name">{{ item.test_item }}</div>
+        {% if item.test_case or item.condition_desc %}
+        <div class="item-desc">{{ item.test_case or item.condition_desc }}</div>
+        {% endif %}
+    </div>
+    <div class="item-result">
+        <select class="form-select"
+                hx-put="/page/projects/{{ project_id }}/records/{{ rid }}"
+                hx-target="#row-{{ rid }}"
+                hx-swap="outerHTML"
+                hx-trigger="change"
+                name="result">
+            <option value="">-- 选择结果 --</option>
+            {% for r in ['Pass','Fail','NA','Blocked','Error','Manual'] %}
+            <option value="{{ r }}" {% if item.record.result == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="item-comment">
+        <input type="text" placeholder="备注（回车保存）"
+               value="{{ item.record.comment or '' }}"
+               hx-put="/page/projects/{{ project_id }}/records/{{ rid }}"
+               hx-target="#row-{{ rid }}"
+               hx-swap="outerHTML"
+               hx-trigger="keyup[key=='Enter']"
+               hx-include="previous select"
+               name="comment">
+    </div>
+    <div>
+        {% set r = item.record.result or '' %}
+        <span class="{% if r=='Pass' %}result-pass{% elif r=='Fail' %}result-fail{% elif r=='Blocked' %}result-blocked{% elif r=='NA' %}result-na{% elif r=='Error' %}result-fail{% else %}muted{% endif %}" style="font-size:12px">
+            {{ r or '未测' }}
+        </span>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfor %}

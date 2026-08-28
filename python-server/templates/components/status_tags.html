@@ -1,0 +1,58 @@
+{% macro project_status(status) %}
+{% if status=='draft' %}<span class="tag tag-info">草稿</span>
+{% elif status=='testing' %}<span class="tag tag-warning">测试中</span>
+{% elif status=='completed' %}<span class="tag tag-success">已完成</span>
+{% else %}<span class="tag tag-info">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{% macro bug_status(status) %}
+{% if status=='open' %}<span class="tag tag-danger">Open</span>
+{% elif status=='closed' %}<span class="tag tag-success">Closed</span>
+{% elif status=='fixing' %}<span class="tag tag-warning">Fixing</span>
+{% else %}<span class="tag tag-info">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{% macro bug_severity(severity) %}
+{% if severity=='high' %}<span class="bug-sev-high">high</span>
+{% elif severity=='medium' %}<span class="bug-sev-medium">medium</span>
+{% else %}<span class="bug-sev-low">low</span>{% endif %}
+{% endmacro %}
+
+{% macro req_status(status) %}
+{% if status=='draft' %}<span class="tag tag-info">草稿</span>
+{% elif status=='active' %}<span class="tag tag-primary">已激活</span>
+{% elif status=='developing' %}<span class="tag tag-warning">开发中</span>
+{% elif status=='testing' %}<span class="tag tag-warning">测试中</span>
+{% elif status=='completed' %}<span class="tag tag-success">已完成</span>
+{% elif status=='closed' %}<span class="tag tag-info">已关闭</span>
+{% else %}<span class="tag tag-info">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{% macro req_type(req_type) %}
+{% if req_type=='business' %}<span class="tag tag-primary">业务</span>
+{% elif req_type=='user' %}<span class="tag tag-info">用户</span>
+{% else %}<span class="tag tag-warning">开发</span>{% endif %}
+{% endmacro %}
+
+{% macro priority_tag(priority) %}
+{% if priority=='urgent' %}<span class="tag tag-danger">紧急</span>
+{% elif priority=='high' %}<span class="tag tag-warning">高</span>
+{% elif priority=='medium' %}<span class="tag tag-primary">中</span>
+{% else %}<span class="tag tag-info">低</span>{% endif %}
+{% endmacro %}
+
+{% macro task_status(status) %}
+{% if status=='todo' %}<span class="tag tag-info">待办</span>
+{% elif status=='doing' %}<span class="tag tag-warning">进行中</span>
+{% elif status=='done' %}<span class="tag tag-success">已完成</span>
+{% elif status=='closed' %}<span class="tag tag-info">已关闭</span>
+{% else %}<span class="tag tag-info">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{% macro result_tag(result) %}
+{% if result=='Pass' %}<span class="result-pass">Pass</span>
+{% elif result=='Fail' %}<span class="result-fail">Fail</span>
+{% elif result=='NA' %}<span class="result-na">NA</span>
+{% elif result=='Blocked' %}<span class="result-blocked">Blocked</span>
+{% else %}<span class="text-muted">{{ result or '-' }}</span>{% endif %}
+{% endmacro %}

@@ -1,0 +1,144 @@
+{
+  "version": "1.0.0",
+  "scripts": [
+    {
+      "id": "collector.bios.info",
+      "name": "BIOS信息采集",
+      "category": "bios_check",
+      "auto": true,
+      "execution_mode": "auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/bios_info.py",
+      "description": "采集 BIOS 厂商、版本和发布日期。",
+      "judge": {
+        "type": "field_equals",
+        "parsed_field": "BIOS_VERSION",
+        "spec_field": "bios_version",
+        "when_spec_missing": "Pass",
+        "fail_verdict": "Fail"
+      }
+    },
+    {
+      "id": "collector.cpu.info",
+      "name": "CPU信息采集",
+      "category": "cpu",
+      "auto": true,
+      "execution_mode": "auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/cpu_info.py",
+      "description": "采集 CPU 型号、主频、核心数和线程数。",
+      "judge": {
+        "type": "field_contains",
+        "parsed_field": "CPU_MODEL",
+        "spec_field": "cpu_model",
+        "when_spec_missing": "Pass",
+        "fail_verdict": "Fail",
+        "case_insensitive": true
+      }
+    },
+    {
+      "id": "collector.memory.info",
+      "name": "内存信息采集",
+      "category": "memory",
+      "auto": true,
+      "execution_mode": "auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/memory_info.py",
+      "description": "采集内存总容量、插槽数和频率。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.disk.info",
+      "name": "磁盘信息采集",
+      "category": "hdd_ssd",
+      "auto": true,
+      "execution_mode": "auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/disk_info.py",
+      "description": "采集磁盘型号、容量、介质类型和接口信息。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.gpu.info",
+      "name": "GPU信息采集",
+      "category": "vga",
+      "auto": true,
+      "execution_mode": "auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/gpu_info.py",
+      "description": "采集 GPU 型号和驱动版本。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.lan.info",
+      "name": "有线网络信息采集",
+      "category": "lan",
+      "auto": true,
+      "execution_mode": "semi_auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/lan_info.py",
+      "description": "采集有线网卡名称、状态和链路速率。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.wlan.info",
+      "name": "无线网络信息采集",
+      "category": "wlan",
+      "auto": true,
+      "execution_mode": "semi_auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/wlan_info.py",
+      "description": "采集无线网卡名称、状态和链路速率。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.audio.info",
+      "name": "音频设备信息采集",
+      "category": "audio",
+      "auto": true,
+      "execution_mode": "semi_auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/audio_info.py",
+      "description": "采集音频设备名称和状态。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.usb.info",
+      "name": "USB设备信息采集",
+      "category": "usb",
+      "auto": true,
+      "execution_mode": "semi_auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/usb_info.py",
+      "description": "采集 USB 设备数量和基础状态。",
+      "judge": {
+        "type": "always_pass"
+      }
+    },
+    {
+      "id": "collector.device_manager.info",
+      "name": "设备管理器异常检查",
+      "category": "basic_function",
+      "auto": true,
+      "execution_mode": "semi_auto",
+      "runtime": "python",
+      "entry": "scripts/collectors/device_manager_info.py",
+      "description": "采集设备管理器中存在异常状态的设备列表。",
+      "judge": {
+        "type": "always_pass"
+      }
+    }
+  ]
+}

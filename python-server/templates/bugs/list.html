@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Bug 管理 - QCC{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main"><div class="app-content animate-in" style="max-width:1400px">
+        {{ hero.page_hero("Bug 管理", "共 " ~ total ~ " 个缺陷") }}
+
+        <div x-data="{ showCreate: false }">
+            <div class="table-toolbar">
+                <div class="toolbar-left">
+                    <select name="status" class="form-select" hx-get="/page/bugs/list" hx-target="#tbl" hx-trigger="change" hx-include="[name='severity'],[name='keyword']">
+                        <option value="">全部状态</option>
+                        <option value="open">Open</option><option value="fixing">Fixing</option>
+                        <option value="verified">Verified</option><option value="closed">Closed</option>
+                    </select>
+                    <select name="severity" class="form-select" hx-get="/page/bugs/list" hx-target="#tbl" hx-trigger="change" hx-include="[name='status'],[name='keyword']">
+                        <option value="">全部级别</option>
+                        <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+                    </select>
+                    <input name="keyword" class="form-input" placeholder="搜索标题/编号..." style="width:200px" hx-get="/page/bugs/list" hx-target="#tbl" hx-trigger="keyup changed delay:300ms" hx-include="[name='status'],[name='severity']">
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn btn-primary" @click="showCreate = !showCreate">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        新建Bug
+                    </button>
+                </div>
+            </div>
+
+            <!-- 创建Bug表单 -->
+            <div x-show="showCreate" x-cloak style="margin-bottom:20px">
+                <div class="card" style="padding:20px">
+                    <h3 style="font-size:15px;font-weight:600;margin-bottom:16px">新建Bug记录</h3>
+                    <form id="create-bug-form" @submit.prevent="submitBug()">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                            <div class="form-group">
+                                <label class="form-label">Category *</label>
+                                <select name="category" class="form-select" required>
+                                    <option value="">选择分类</option>
+                                    <option value="CPU">CPU</option><option value="内存">内存</option><option value="硬盘">硬盘</option>
+                                    <option value="显卡">显卡</option><option value="主板">主板</option><option value="光驱">光驱</option>
+                                    <option value="键盘">键盘</option><option value="鼠标">鼠标</option><option value="显示器">显示器</option>
+                                    <option value="前置小板">前置小板</option><option value="软件">软件</option><option value="其他">其他</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Severity *</label>
+                                <select name="severity" class="form-select" required>
+                                    <option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Abnormal Probability</label>
+                                <input name="reproduce_rate" class="form-input" placeholder="如: 30%">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:12px">
+                            <label class="form-label">Bug Description *</label>
+                            <textarea name="title" class="form-input" rows="2" required placeholder="描述Bug现象"></textarea>
+                        </div>
+                        <div class="form-group" style="margin-top:12px">
+                            <label class="form-label">Reproduce Steps</label>
+                            <textarea name="description" class="form-input" rows="2" placeholder="复现步骤"></textarea>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+                            <div class="form-group">
+                                <label class="form-label">MB (主板)</label>
+                                <input name="mb_info" class="form-input" placeholder="主板型号">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">BIOS</label>
+                                <input name="bios_info" class="form-input" placeholder="BIOS版本">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">SYS (系统)</label>
+                                <input name="sys_info" class="form-input" placeholder="操作系统">
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                            <div class="form-group">
+                                <label class="form-label">Owner (责任人)</label>
+                                <input name="owner" class="form-input" placeholder="负责人">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Testing Personnel</label>
+                                <input name="tester" class="form-input" placeholder="测试人员">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:16px">
+                            <button type="submit" class="btn btn-primary">提交</button>
+                            <button type="button" class="btn btn-ghost" @click="showCreate = false">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="tbl"><div class="table-wrap">{% include "components/bug_table.html" %}</div></div>
+    </div></main>
+</div>
+
+<script>
+async function submitBug() {
+    const form = document.getElementById('create-bug-form');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        // 获取当前项目ID（如果有）
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project_id') || 1; // 默认项目
+
+        const resp = await fetch(`/api/projects/${projectId}/bugs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+
+        if (result.code === 200) {
+            showToast('Bug创建成功', 'success');
+            form.reset();
+            // 刷新列表
+            htmx.trigger('#tbl', 'load');
+        } else {
+            showToast(result.message || '创建失败', 'error');
+        }
+    } catch (err) {
+        showToast('请求失败: ' + err.message, 'error');
+    }
+}
+</script>
+{% endblock %}

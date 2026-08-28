@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}报告中心 - QCC{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+{% import "components/stat_card.html" as stat %}
+
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1400px">
+            {{ hero.page_hero("报告中心", "查看测试报告摘要、导入测试数据、生成最终报告。") }}
+
+            <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+                {{ stat.stat_card("项目总数", stats.total_projects, "📋", "primary") }}
+                {{ stat.stat_card("已完成", stats.completed, "✅", "success") }}
+                {{ stat.stat_card("测试中", stats.testing, "🔄", "warning") }}
+                {{ stat.stat_card("草稿", stats.draft, "📝", "info") }}
+            </div>
+
+            <!-- 数据导入/导出工具栏 -->
+            <div class="card" x-data="{ showImport: false, selectedProject: '' }">
+                <div class="card-header">
+                    <h3>数据导入与导出</h3>
+                    <button class="btn btn-primary btn-sm" @click="showImport = !showImport">
+                        <span x-text="showImport ? '收起' : '展开导入工具'"></span>
+                    </button>
+                </div>
+                <div class="card-body" x-show="showImport" x-cloak>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+                        <!-- 导入设备配置 -->
+                        <div style="border:1px dashed var(--qcc-border-base);border-radius:var(--qcc-radius-md);padding:16px;text-align:center">
+                            <div style="font-size:24px;margin-bottom:8px">⚙️</div>
+                            <div style="font-weight:var(--qcc-font-weight-semibold);margin-bottom:4px">导入设备配置</div>
+                            <div class="text-muted" style="margin-bottom:12px">上传 JSON 格式的设备配置文件</div>
+                            <input type="file" id="config-file" accept=".json" style="display:none"
+                                   onchange="uploadConfig(this)">
+                            <input type="number" id="config-project-id" class="form-input" placeholder="项目ID" style="width:100px;margin-bottom:8px">
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('config-file').click()">选择文件</button>
+                        </div>
+
+                        <!-- 导入测试结果 -->
+                        <div style="border:1px dashed var(--qcc-border-base);border-radius:var(--qcc-radius-md);padding:16px;text-align:center">
+                            <div style="font-size:24px;margin-bottom:8px">📊</div>
+                            <div style="font-weight:var(--qcc-font-weight-semibold);margin-bottom:4px">导入测试结果</div>
+                            <div class="text-muted" style="margin-bottom:12px">上传 JSON 格式的测试结果文件</div>
+                            <input type="file" id="result-file" accept=".json" style="display:none"
+                                   onchange="uploadResult(this)">
+                            <input type="number" id="result-project-id" class="form-input" placeholder="项目ID" style="width:100px;margin-bottom:8px">
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('result-file').click()">选择文件</button>
+                        </div>
+
+                        <!-- 上传日志 -->
+                        <div style="border:1px dashed var(--qcc-border-base);border-radius:var(--qcc-radius-md);padding:16px;text-align:center">
+                            <div style="font-size:24px;margin-bottom:8px">📁</div>
+                            <div style="font-weight:var(--qcc-font-weight-semibold);margin-bottom:4px">上传日志文件</div>
+                            <div class="text-muted" style="margin-bottom:12px">支持多文件上传</div>
+                            <input type="file" id="log-files" multiple style="display:none"
+                                   onchange="uploadLogs(this)">
+                            <input type="number" id="log-project-id" class="form-input" placeholder="项目ID" style="width:100px;margin-bottom:8px">
+                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('log-files').click()">选择文件</button>
+                        </div>
+                    </div>
+
+                    <!-- 导出检查 -->
+                    <div style="margin-top:16px;padding:16px;background:var(--qcc-bg-hover);border-radius:var(--qcc-radius-md);display:flex;align-items:center;gap:16px">
+                        <div style="flex:1">
+                            <div style="font-weight:var(--qcc-font-weight-semibold)">导出前完整性检查</div>
+                            <div class="text-muted">检查测试记录是否有遗漏或未填写备注的 Fail 项</div>
+                        </div>
+                        <input type="number" id="check-project-id" class="form-input" placeholder="项目ID" style="width:100px">
+                        <button class="btn btn-ghost btn-sm" onclick="checkExport()">检查</button>
+                    </div>
+                    <div id="check-result" style="margin-top:8px"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>项目报告列表</h3>
+                    <div style="display:flex;gap:8px">
+                        <select name="status" class="form-select" style="width:auto;min-width:120px"
+                                hx-get="/page/report/list" hx-target="#report-tbl" hx-trigger="change"
+                                hx-include="[name='keyword']">
+                            <option value="">全部状态</option>
+                            <option value="draft">草稿</option>
+                            <option value="testing">测试中</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                        <input name="keyword" class="form-input" placeholder="搜索项目编号/名称..." style="width:200px"
+                               hx-get="/page/report/list" hx-target="#report-tbl" hx-trigger="input changed delay:300ms"
+                               hx-include="[name='status']">
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div id="report-tbl">
+                        {% include "components/report_table.html" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+async function uploadConfig(input) {
+    const pid = document.getElementById('config-project-id').value;
+    if (!pid) { showToast('请输入项目ID', 'warning'); return; }
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    try {
+        const r = await fetch(`/api/projects/${pid}/report-center/import-config`, { method: 'POST', body: fd });
+        const res = await r.json();
+        showToast(res.message || '导入成功', r.ok ? 'success' : 'error');
+    } catch(e) { showToast('上传失败: ' + e.message, 'error'); }
+    input.value = '';
+}
+async function uploadResult(input) {
+    const pid = document.getElementById('result-project-id').value;
+    if (!pid) { showToast('请输入项目ID', 'warning'); return; }
+    const fd = new FormData();
+    fd.append('file', input.files[0]);
+    try {
+        const r = await fetch(`/api/projects/${pid}/report-center/import-results`, { method: 'POST', body: fd });
+        const res = await r.json();
+        showToast(res.message || '导入成功', r.ok ? 'success' : 'error');
+    } catch(e) { showToast('上传失败: ' + e.message, 'error'); }
+    input.value = '';
+}
+async function uploadLogs(input) {
+    const pid = document.getElementById('log-project-id').value;
+    if (!pid) { showToast('请输入项目ID', 'warning'); return; }
+    const fd = new FormData();
+    for (const f of input.files) fd.append('files', f);
+    try {
+        const r = await fetch(`/api/projects/${pid}/report-center/upload-logs`, { method: 'POST', body: fd });
+        const res = await r.json();
+        showToast(res.message || '上传成功', r.ok ? 'success' : 'error');
+    } catch(e) { showToast('上传失败: ' + e.message, 'error'); }
+    input.value = '';
+}
+async function checkExport() {
+    const pid = document.getElementById('check-project-id').value;
+    if (!pid) { showToast('请输入项目ID', 'warning'); return; }
+    try {
+        const r = await fetch(`/api/projects/${pid}/export/check`);
+        const res = await r.json();
+        const el = document.getElementById('check-result');
+        if (res.data.valid) {
+            el.innerHTML = '<div style="padding:8px 12px;background:var(--qcc-color-success-50);border-radius:var(--qcc-radius-md);color:var(--qcc-success-dark)">✓ 检查通过，共 ' + res.data.total + ' 条记录，无异常</div>';
+        } else {
+            el.innerHTML = '<div style="padding:8px 12px;background:var(--qcc-color-warning-50);border-radius:var(--qcc-radius-md);color:var(--qcc-warning-dark)">⚠ 发现 ' + res.data.issues.length + ' 个问题：<br>' + res.data.issues.join('<br>') + '</div>';
+        }
+    } catch(e) { showToast('检查失败: ' + e.message, 'error'); }
+}
+</script>
+{% endblock %}

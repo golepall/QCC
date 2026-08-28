@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}测试记录 - {{ project.project_code }} - QCC{% endblock %}
+{% block head %}
+<style>
+.record-layout{display:flex;gap:0;height:calc(100vh - 80px)}
+.cat-sidebar{width:220px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--qcc-border-light);background:var(--qcc-bg-page)}
+.cat-item{display:block;padding:10px 16px;font-size:var(--qcc-font-size-sm);color:var(--qcc-text-regular);border-left:3px solid transparent;cursor:pointer;transition:all var(--qcc-transition-base);text-decoration:none;border-bottom:1px solid var(--qcc-border-lighter)}
+.cat-item:hover{background:var(--qcc-bg-card);color:var(--qcc-text-primary)}
+.cat-item.active{background:var(--qcc-bg-card);color:var(--qcc-primary);border-left-color:var(--qcc-primary);font-weight:var(--qcc-font-weight-semibold)}
+.cat-item .count{float:right;font-size:11px;color:var(--qcc-text-placeholder)}
+.item-area{flex:1;overflow-y:auto;padding:20px 24px}
+.section-header{padding:12px 0;font-size:var(--qcc-font-size-base);font-weight:var(--qcc-font-weight-bold);color:var(--qcc-text-primary);border-bottom:2px solid var(--qcc-border-light);margin-bottom:12px}
+.item-row{display:grid;grid-template-columns:40px 1fr 180px 200px 80px;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid var(--qcc-border-lighter)}
+.item-row:hover{background:var(--qcc-bg-hover);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:var(--qcc-radius-sm)}
+.item-no{font-size:var(--qcc-font-size-xs);color:var(--qcc-text-placeholder);font-weight:var(--qcc-font-weight-medium);padding-top:8px}
+.item-name{font-size:var(--qcc-font-size-sm);font-weight:var(--qcc-font-weight-medium);color:var(--qcc-text-primary)}
+.item-desc{font-size:var(--qcc-font-size-xs);color:var(--qcc-text-regular);margin-top:2px}
+.item-result select{padding:6px 10px;font-size:var(--qcc-font-size-xs)}
+.item-comment input{padding:6px 10px;font-size:var(--qcc-font-size-xs);border:1px solid var(--qcc-border-base);border-radius:var(--qcc-radius-input);width:100%}
+.item-comment input:focus{outline:none;border-color:var(--qcc-primary)}
+.result-pass{color:var(--qcc-success-dark);font-weight:var(--qcc-font-weight-semibold)}
+.result-fail{color:var(--qcc-danger);font-weight:var(--qcc-font-weight-semibold)}
+.result-na{color:var(--qcc-text-secondary)}
+.result-blocked{color:var(--qcc-warning-dark)}
+.batch-bar{padding:12px 20px;background:var(--qcc-bg-page);border-top:1px solid var(--qcc-border-light);display:flex;align-items:center;gap:10px}
+.batch-bar select{padding:6px 10px;font-size:var(--qcc-font-size-xs);min-width:100px}
+.issue-panel{background:var(--qcc-bg-card);border:1px solid var(--qcc-border);border-radius:var(--qcc-radius-lg);margin-top:24px;overflow:hidden}
+.issue-header{padding:14px 20px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-bottom:1px solid #f59e0b;display:flex;align-items:center;gap:10px;cursor:pointer}
+.issue-header h3{font-size:14px;font-weight:600;color:#92400e;margin:0}
+.issue-list{max-height:300px;overflow-y:auto}
+.issue-item{padding:12px 20px;border-bottom:1px solid var(--qcc-border-lighter);display:flex;align-items:flex-start;gap:12px}
+.issue-item:last-child{border-bottom:none}
+.issue-item:hover{background:var(--qcc-bg-hover)}
+</style>
+{% endblock %}
+{% block body %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="page-header" style="padding:16px 24px;border-bottom:1px solid var(--qcc-border-light);margin:0">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a href="/page/projects/{{ project.id }}" class="btn btn-ghost btn-sm">← 返回</a>
+                <div>
+                    <h1 style="font-size:18px;display:inline;margin-right:8px">{{ project.project_code }}</h1>
+                    <span class="tag tag-primary">{{ project.product_name }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="batch-bar">
+            <span style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">批量设置：</span>
+            <select id="batch-result" name="result" class="form-select" style="width:auto">
+                <option value="">选择结果…</option>
+                <option value="Pass">Pass 通过</option>
+                <option value="Fail">Fail 失败</option>
+                <option value="NA">NA 不适用</option>
+                <option value="Blocked">Blocked 阻塞</option>
+            </select>
+            <button class="btn btn-primary btn-sm" hx-post="/page/projects/{{ project_id }}/records/batch-set" hx-include="#batch-result,#active-cat" hx-target="#record-rows" hx-confirm="确认将该分类下所有未填写项设为此结果？">应用</button>
+            <input type="hidden" id="active-cat" name="active-cat" value="{{ active_cat|default('') }}">
+            <span class="toolbar-spacer"></span>
+            <span class="text-muted">测试记录</span>
+        </div>
+        <div class="record-layout">
+            <div class="cat-sidebar">
+                {% for cat_id, cat_data in records.items() %}
+                <a href="/page/projects/{{ project_id }}/records?cat={{ cat_id }}" class="cat-item {{ 'active' if active_cat==cat_id|string else '' }}" @click="document.getElementById('active-cat').value='{{ cat_id }}'">
+                    {{ cat_data.category.sheet_name or cat_data.category.category_name }}
+                    <span class="count">{{ cat_data.test_items|selectattr('is_header','equalto',0)|list|length }}</span>
+                </a>
+                {% endfor %}
+                <!-- 异常问题上报入口 -->
+                <a href="#issue-section" class="cat-item" style="color:#b45309;border-left-color:#f59e0b" @click.prevent="document.getElementById('issue-section').scrollIntoView({behavior:'smooth'})">
+                    ⚠ 异常问题上报
+                    <span class="count" id="issue-count">0</span>
+                </a>
+            </div>
+            <div class="item-area" id="records-area">
+                <div id="record-rows">{% include "components/record_rows.html" %}</div>
+
+                <!-- 异常问题上报区域 -->
+                <div id="issue-section" x-data="{ showForm: false, issues: [], loading: false }" x-init="
+                    fetch('/api/projects/{{ project_id }}/bugs').then(r=>r.json()).then(d=>{
+                        if(d.code===200){ issues=d.data; document.getElementById('issue-count').textContent=issues.length; }
+                    });
+                ">
+                    <div class="issue-panel">
+                        <div class="issue-header" @click="showForm = !showForm">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <h3>异常问题上报</h3>
+                            <span style="font-size:12px;color:#92400e;margin-left:auto" x-text="showForm ? '收起' : '展开'"></span>
+                        </div>
+
+                        <!-- 上报表单 -->
+                        <div x-show="showForm" x-cloak style="padding:20px;border-bottom:1px solid var(--qcc-border-light)">
+                            <form @submit.prevent="submitIssue()" id="issue-form">
+                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">问题类型 *</label>
+                                        <select name="category" class="form-select" required>
+                                            <option value="">选择类型</option>
+                                            <option value="功能异常">功能异常</option>
+                                            <option value="兼容性问题">兼容性问题</option>
+                                            <option value="性能问题">性能问题</option>
+                                            <option value="界面问题">界面问题</option>
+                                            <option value="数据问题">数据问题</option>
+                                            <option value="其他">其他</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">严重程度 *</label>
+                                        <select name="severity" class="form-select" required>
+                                            <option value="high">High - 阻塞测试</option>
+                                            <option value="medium" selected>Medium - 需关注</option>
+                                            <option value="low">Low - 轻微</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">异常概率</label>
+                                        <input name="reproduce_rate" class="form-input" placeholder="如: 必现/30%/偶发">
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-top:12px">
+                                    <label class="form-label" style="font-size:12px">问题描述 *</label>
+                                    <textarea name="title" class="form-input" rows="2" required placeholder="详细描述遇到的异常现象" style="font-size:13px"></textarea>
+                                </div>
+                                <div class="form-group" style="margin-top:12px">
+                                    <label class="form-label" style="font-size:12px">重现步骤</label>
+                                    <textarea name="description" class="form-input" rows="2" placeholder="1. 打开xxx&#10;2. 点击xxx&#10;3. 观察到xxx" style="font-size:13px"></textarea>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">MB (主板)</label>
+                                        <input name="mb_info" class="form-input" placeholder="主板型号" style="font-size:13px">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">BIOS</label>
+                                        <input name="bios_info" class="form-input" placeholder="BIOS版本" style="font-size:13px">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">SYS (系统)</label>
+                                        <input name="sys_info" class="form-input" placeholder="操作系统版本" style="font-size:13px">
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">Owner (责任人)</label>
+                                        <input name="owner" class="form-input" placeholder="问题负责人" style="font-size:13px">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px">备注</label>
+                                        <input name="remark" class="form-input" placeholder="补充说明" style="font-size:13px">
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:8px;margin-top:16px">
+                                    <button type="submit" class="btn btn-primary btn-sm" :disabled="loading">
+                                        <span x-show="!loading">提交并同步到Bug管理</span>
+                                        <span x-show="loading">提交中...</span>
+                                    </button>
+                                    <button type="button" class="btn btn-ghost btn-sm" @click="showForm = false">取消</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 已上报问题列表 -->
+                        <div class="issue-list">
+                            <template x-if="issues.length === 0">
+                                <div style="text-align:center;padding:30px;color:var(--qcc-text-muted);font-size:13px">暂无异常问题记录</div>
+                            </template>
+                            <template x-for="item in issues" :key="item.id">
+                                <div class="issue-item">
+                                    <div style="flex-shrink:0">
+                                        <span class="tag" :class="{
+                                            'tag-danger': item.severity === 'high',
+                                            'tag-warning': item.severity === 'medium',
+                                            'tag-info': item.severity === 'low'
+                                        }" x-text="item.severity" style="font-size:11px"></span>
+                                    </div>
+                                    <div style="flex:1;min-width:0">
+                                        <div style="display:flex;align-items:center;gap:8px">
+                                            <span class="text-mono" style="font-size:12px;color:var(--qcc-primary)" x-text="item.bug_id"></span>
+                                            <span style="font-size:13px;font-weight:500" x-text="item.title"></span>
+                                        </div>
+                                        <div style="font-size:11px;color:var(--qcc-text-secondary);margin-top:2px">
+                                            <span x-text="item.category"></span>
+                                            <span x-show="item.mb_info"> · MB: <span x-text="item.mb_info"></span></span>
+                                            <span x-show="item.owner"> · 负责: <span x-text="item.owner"></span></span>
+                                        </div>
+                                    </div>
+                                    <div style="flex-shrink:0">
+                                        <span class="tag" :class="{
+                                            'tag-danger': item.status === 'open',
+                                            'tag-warning': item.status === 'fixing',
+                                            'tag-success': item.status === 'closed'
+                                        }" x-text="item.status" style="font-size:11px"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 保存并退出 -->
+                <div style="padding:20px 0;border-top:2px solid var(--qcc-border-light);margin-top:20px;display:flex;align-items:center;justify-content:space-between">
+                    <div class="text-muted" style="font-size:13px">每条记录在修改时自动保存</div>
+                    <a href="/page/projects/{{ project_id }}" class="btn btn-primary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><polyline points="9 18 15 12 9 6"/></svg>
+                        保存并退出
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+async function submitIssue() {
+    const form = document.getElementById('issue-form');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const projectId = {{ project_id }};
+
+    // 数据校验
+    if (!data.category || !data.title) {
+        showToast('请填写问题类型和描述', 'warning');
+        return;
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span>提交中...</span>';
+
+    try {
+        const resp = await fetch(`/api/projects/${projectId}/bugs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+
+        if (result.code === 200) {
+            showToast(`问题已提交并同步到Bug管理 (${result.data.bug_id})`, 'success');
+            form.reset();
+            // 刷新问题列表
+            const listResp = await fetch(`/api/projects/${projectId}/bugs`);
+            const listData = await listResp.json();
+            if (listData.code === 200) {
+                const section = document.getElementById('issue-section');
+                if (section.__x) {
+                    section.__x.$data.issues = listData.data;
+                    document.getElementById('issue-count').textContent = listData.data.length;
+                }
+            }
+        } else {
+            showToast(result.message || '提交失败', 'error');
+        }
+    } catch (err) {
+        showToast('请求失败: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>提交并同步到Bug管理</span>';
+    }
+}
+</script>
+{% endblock %}

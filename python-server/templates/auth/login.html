@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}登录 - QCC{% endblock %}
+{% block head %}
+<style>
+.login-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ecf5ff 0%,#d9ecff 40%,#f0f9eb 100%);position:relative}
+.login-bg::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23409eff' fill-opacity='.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.login-card{position:relative;width:420px;background:#fff;border-radius:var(--qcc-radius-card);padding:44px 40px 32px;box-shadow:var(--qcc-shadow-lg),var(--qcc-shadow-primary);border:1px solid rgba(64,158,255,.1)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-icon{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--qcc-primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:var(--qcc-font-weight-bold);color:#fff;margin:0 auto 14px;box-shadow:var(--qcc-shadow-primary)}
+.login-logo h1{font-size:var(--qcc-font-size-2xl);font-weight:var(--qcc-font-weight-bold);color:var(--qcc-text-primary)}
+.login-logo p{font-size:var(--qcc-font-size-sm);color:var(--qcc-text-secondary);margin-top:4px}
+.login-tabs{display:flex;border-bottom:2px solid var(--qcc-border-lighter);margin-bottom:24px}
+.login-tab{flex:1;padding:12px;text-align:center;background:none;border:none;font-family:inherit;font-size:var(--qcc-font-size-base);font-weight:var(--qcc-font-weight-medium);color:var(--qcc-text-placeholder);cursor:pointer;transition:all var(--qcc-transition-base);position:relative}
+.login-tab.active{color:var(--qcc-primary)}
+.login-tab.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--qcc-primary);border-radius:2px}
+.login-input{width:100%;padding:12px 16px;border:1px solid var(--qcc-border-base);border-radius:var(--qcc-radius-input);font-family:inherit;font-size:var(--qcc-font-size-base);color:var(--qcc-text-primary);background:var(--qcc-bg-page);transition:all var(--qcc-transition-base);outline:none;margin-bottom:16px}
+.login-input:focus{border-color:var(--qcc-primary);background:#fff;box-shadow:0 0 0 3px rgba(64,158,255,.1)}
+.login-input::placeholder{color:var(--qcc-text-placeholder)}
+.login-submit{width:100%;padding:13px;border:none;border-radius:var(--qcc-radius-button);background:var(--qcc-primary);color:#fff;font-family:inherit;font-size:var(--qcc-font-size-lg);font-weight:var(--qcc-font-weight-semibold);cursor:pointer;transition:all var(--qcc-transition-base);box-shadow:var(--qcc-shadow-primary)}
+.login-submit:hover{background:var(--qcc-primary-dark);box-shadow:0 6px 24px rgba(64,158,255,.25);transform:translateY(-1px)}
+.login-error{color:var(--qcc-danger);font-size:var(--qcc-font-size-sm);text-align:center;margin-bottom:12px;min-height:20px}
+.login-hint{margin-top:20px;text-align:center;font-size:var(--qcc-font-size-xs);color:var(--qcc-text-placeholder);padding-top:16px;border-top:1px solid var(--qcc-border-lighter)}
+.login-hint code{font-family:"SF Mono",monospace;background:var(--qcc-bg-page);padding:2px 6px;border-radius:3px;color:var(--qcc-text-regular)}
+</style>
+{% endblock %}
+{% block body %}
+<div class="login-bg">
+    <div class="login-card" x-data="{ tab:'login', error:'' }">
+        <div class="login-logo">
+            <div class="login-logo-icon">Q</div>
+            <h1>QCC 测试报告自动化平台</h1>
+            <p>Quality Control Circle</p>
+        </div>
+        <div class="login-tabs">
+            <button class="login-tab" :class="{ active:tab==='login' }" @click="tab='login';error=''">登录</button>
+            <button class="login-tab" :class="{ active:tab==='register' }" @click="tab='register';error=''">注册</button>
+        </div>
+        <div class="login-error" x-show="error" x-text="error"></div>
+
+        <form x-show="tab==='login'" @submit.prevent="const fd=new FormData($el);fetch('/page/login',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.code===0)location.href='/page/dashboard';else error=d.message})">
+            <input class="login-input" type="text" name="username" placeholder="用户名" required autofocus>
+            <input class="login-input" type="password" name="password" placeholder="密码" required>
+            <button class="login-submit" type="submit">登 录</button>
+        </form>
+
+        <form x-show="tab==='register'" style="display:none" @submit.prevent="const fd=new FormData($el);fetch('/page/register',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{if(d.code===200){error='注册成功，请登录';tab='login'}else error=d.message})">
+            <input class="login-input" type="text" name="username" placeholder="用户名（3-20个字符）" required minlength="3">
+            <input class="login-input" type="text" name="displayName" placeholder="显示名称">
+            <input class="login-input" type="password" name="password" placeholder="密码（至少6位）" required minlength="6">
+            <button class="login-submit" type="submit">注 册</button>
+        </form>
+
+        <div class="login-hint">默认账号 <code>admin</code> / <code>admin123</code></div>
+    </div>
+</div>
+{% endblock %}

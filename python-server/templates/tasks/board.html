@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+{% block title %}任务看板 - QCC{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1600px">
+            {{ hero.page_hero("任务看板", "以看板视图管理测试任务，拖拽或点击切换状态。") }}
+
+            <!-- 统计卡片 -->
+            <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:var(--qcc-space-xl)">
+                <div class="stat-card"><div class="stat-content"><div class="stat-label">📊 总任务</div><div class="stat-value" id="stat-total">{{ stats.total }}</div></div></div>
+                <div class="stat-card"><div class="stat-content"><div class="stat-label">📋 待办</div><div class="stat-value" id="stat-todo">{{ stats.todo }}</div></div></div>
+                <div class="stat-card"><div class="stat-content"><div class="stat-label">🔄 进行中</div><div class="stat-value" id="stat-doing">{{ stats.doing }}</div></div></div>
+                <div class="stat-card"><div class="stat-content"><div class="stat-label">✅ 已完成</div><div class="stat-value" id="stat-done">{{ stats.done }}</div></div></div>
+                <div class="stat-card"><div class="stat-content"><div class="stat-label">📁 已关闭</div><div class="stat-value" id="stat-closed">{{ stats.closed }}</div></div></div>
+            </div>
+
+            <!-- 工具栏 -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--qcc-space-lg);flex-wrap:wrap;gap:8px">
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <select class="form-select" style="width:auto;min-width:100px" id="filter-priority" onchange="applyFilter()">
+                        <option value="">全部优先级</option>
+                        <option value="urgent">紧急</option><option value="high">高</option>
+                        <option value="medium">中</option><option value="low">低</option>
+                    </select>
+                    <input class="form-input" placeholder="搜索任务..." style="width:200px" id="search-keyword" oninput="applyFilter()">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openCreateModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    新建任务
+                </button>
+            </div>
+
+            <!-- 看板四列 -->
+            <div class="kanban-board">
+                {% for col_key, col_label, col_icon, col_color in [('todo','待办','📋','info'),('doing','进行中','🔄','warning'),('done','已完成','✅','success'),('closed','已关闭','📁','secondary')] %}
+                <div class="kanban-column" id="col-{{ col_key }}"
+                     ondragover="event.preventDefault();this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="onDrop(event,'{{ col_key }}')">
+                    <div class="kanban-col-header" style="border-top:3px solid var(--qcc-{{ col_color }})">
+                        <span>{{ col_icon }} {{ col_label }}</span>
+                        <span class="kanban-count" id="count-{{ col_key }}">{{ board[col_key]|length }}</span>
+                    </div>
+                    <div class="kanban-col-body" id="body-{{ col_key }}">
+                        {% for t in board[col_key] %}
+                        <div class="kanban-card" data-id="{{ t.id }}" data-priority="{{ t.priority }}" draggable="true"
+                             ondragstart="onDragStart(event,{{ t.id }})" onclick="openDetail({{ t.id }})">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                                <span class="text-mono" style="font-size:11px">{{ t.task_code }}</span>
+                                {% if t.priority=='urgent' %}<span class="tag tag-danger" style="font-size:10px;padding:1px 6px">紧急</span>
+                                {% elif t.priority=='high' %}<span class="tag tag-warning" style="font-size:10px;padding:1px 6px">高</span>
+                                {% elif t.priority=='medium' %}<span class="tag tag-primary" style="font-size:10px;padding:1px 6px">中</span>
+                                {% else %}<span class="tag tag-info" style="font-size:10px;padding:1px 6px">低</span>{% endif %}
+                            </div>
+                            <div style="font-size:13px;font-weight:500;color:var(--qcc-text-primary);margin-bottom:8px;line-height:1.4">{{ t.title }}</div>
+                            {% if t.category %}<div style="font-size:11px;color:var(--qcc-text-secondary);margin-bottom:4px">📁 {{ t.category }}</div>{% endif %}
+                            {% if t.progress > 0 %}
+                            <div style="background:#e2e8f0;border-radius:4px;height:4px;margin-bottom:6px;overflow:hidden">
+                                <div style="background:var(--qcc-primary);height:100%;width:{{ t.progress }}%;border-radius:4px"></div>
+                            </div>
+                            {% endif %}
+                            <div style="display:flex;justify-content:space-between;align-items:center">
+                                <span class="text-muted" style="font-size:11px">{{ t.test_engineer or t.assignee_name or '未指派' }}</span>
+                                {% if t.deadline %}<span class="text-muted" style="font-size:11px">📅 {{ t.deadline }}</span>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not board[col_key] %}
+                        <div class="kanban-empty">暂无任务</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- 创建任务弹窗 -->
+<div id="create-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);padding:20px;overflow-y:auto">
+    <div style="background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:560px;max-width:95vw;margin:40px auto">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--qcc-border-light);display:flex;justify-content:space-between;align-items:center">
+            <h3 style="font-size:16px;font-weight:600;margin:0">新建任务</h3>
+            <button class="btn btn-ghost btn-xs" onclick="closeCreateModal()">&times;</button>
+        </div>
+        <div style="padding:20px">
+            <form id="create-form" onsubmit="submitCreate(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div><label class="form-label">类别</label><input name="category" class="form-input" placeholder="如：兼容测试"></div>
+                    <div><label class="form-label">项目类别</label><input name="project_category" class="form-input" placeholder="如：x86/信创"></div>
+                </div>
+                <div style="margin-bottom:12px"><label class="form-label">任务名称 *</label><input name="title" class="form-input" required placeholder="输入任务名称"></div>
+                <div style="margin-bottom:12px"><label class="form-label">描述</label><textarea name="description" class="form-input" rows="2" style="resize:vertical"></textarea></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div><label class="form-label">测试工程师</label><input name="test_engineer" class="form-input" placeholder="负责测试的工程师"></div>
+                    <div><label class="form-label">委托人</label><input name="client" class="form-input" placeholder="委托方"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div><label class="form-label">优先级</label>
+                        <select name="priority" class="form-select"><option value="medium">中</option><option value="urgent">紧急</option><option value="high">高</option><option value="low">低</option></select>
+                    </div>
+                    <div><label class="form-label">接收委托时间</label><input name="commission_time" type="datetime-local" class="form-input"></div>
+                    <div><label class="form-label">委托需求完成时间</label><input name="commission_deadline" type="date" class="form-input"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div><label class="form-label">研发目标完成时间</label><input name="dev_target_time" type="date" class="form-input"></div>
+                    <div><label class="form-label">拿到样品时间</label><input name="sample_time" type="date" class="form-input"></div>
+                    <div><label class="form-label">截止日期</label><input name="deadline" type="date" class="form-input"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div><label class="form-label">进度 (%)</label><input name="progress" type="number" class="form-input" min="0" max="100" value="0"></div>
+                    <div><label class="form-label">备注</label><input name="remark" class="form-input" placeholder="补充说明"></div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+                    <button type="button" class="btn btn-ghost" onclick="closeCreateModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="btn-create">创建任务</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 任务详情弹窗 -->
+<div id="detail-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);padding:20px;overflow-y:auto">
+    <div style="background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:640px;max-width:95vw;margin:40px auto">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--qcc-border-light);display:flex;justify-content:space-between;align-items:center">
+            <h3 id="detail-code" style="font-size:16px;font-weight:600;margin:0"></h3>
+            <button class="btn btn-ghost btn-xs" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div id="detail-body" style="padding:20px"></div>
+    </div>
+</div>
+
+<style>
+.kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--qcc-space-lg);min-height:400px}
+.kanban-column{background:var(--qcc-bg-page);border-radius:var(--qcc-radius-card);border:1px solid var(--qcc-border-lighter);display:flex;flex-direction:column;transition:background .2s}
+.kanban-column.drag-over{background:var(--qcc-bg-hover);border-color:var(--qcc-primary)}
+.kanban-col-header{padding:12px 16px;font-weight:600;font-size:13px;display:flex;justify-content:space-between;align-items:center;background:var(--qcc-bg-card);border-radius:var(--qcc-radius-card) var(--qcc-radius-card) 0 0}
+.kanban-count{background:var(--qcc-bg-hover);padding:2px 8px;border-radius:var(--qcc-radius-full);font-size:11px;color:var(--qcc-text-secondary)}
+.kanban-col-body{padding:8px;flex:1;display:flex;flex-direction:column;gap:8px;min-height:200px;overflow-y:auto}
+.kanban-card{background:var(--qcc-bg-card);border-radius:var(--qcc-radius-md);padding:12px;border:1px solid var(--qcc-border-lighter);box-shadow:var(--qcc-shadow-xs);transition:all .2s;cursor:pointer}
+.kanban-card:hover{box-shadow:var(--qcc-shadow-sm);transform:translateY(-1px)}
+.kanban-card.dragging{opacity:.5}
+.kanban-card[data-priority="urgent"]{border-left:3px solid var(--qcc-danger)}
+.kanban-card[data-priority="high"]{border-left:3px solid var(--qcc-warning)}
+.kanban-empty{text-align:center;padding:32px 16px;color:var(--qcc-text-placeholder);font-size:13px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.detail-item{display:flex;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--qcc-border-lighter)}
+.detail-label{color:var(--qcc-text-muted);min-width:100px;flex-shrink:0;font-weight:500}
+@media(max-width:1024px){.kanban-board{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.kanban-board{grid-template-columns:1fr}}
+</style>
+
+<script>
+let draggedId = null;
+
+// 筛选
+function applyFilter() {
+    const p = document.getElementById('filter-priority').value;
+    const kw = document.getElementById('search-keyword').value.toLowerCase();
+    document.querySelectorAll('.kanban-card').forEach(c => {
+        const mp = !p || c.dataset.priority === p;
+        const mk = !kw || c.textContent.toLowerCase().includes(kw);
+        c.style.display = (mp && mk) ? '' : 'none';
+    });
+}
+
+// 拖拽
+function onDragStart(e, id) { draggedId = id; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+
+function updateEmptyStates() {
+    ['todo', 'doing', 'done', 'closed'].forEach(function(status) {
+        var body = document.getElementById('body-' + status);
+        var cards = body.querySelectorAll('.kanban-card');
+        var empty = body.querySelector('.kanban-empty');
+        if (cards.length === 0) {
+            if (!empty) {
+                var div = document.createElement('div');
+                div.className = 'kanban-empty';
+                div.textContent = '暂无任务';
+                body.appendChild(div);
+            }
+        } else {
+            if (empty) empty.remove();
+        }
+    });
+}
+
+async function onDrop(e, status) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    if (!draggedId) return;
+    var card = document.querySelector('.kanban-card[data-id="' + draggedId + '"]');
+    var fromBody = card ? card.parentElement : null;
+    try {
+        var r = await fetch('/api/tasks/' + draggedId + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) });
+        if (r.ok) {
+            showToast('状态已更新', 'success');
+            if (card) { card.remove(); document.getElementById('body-' + status).appendChild(card); }
+            updateEmptyStates();
+            refreshStats();
+        } else showToast('更新失败', 'error');
+    } catch (err) { showToast('操作失败', 'error'); }
+    draggedId = null;
+}
+
+// 刷新统计
+async function refreshStats() {
+    try {
+        const r = await fetch('/api/tasks/stats');
+        const d = await r.json();
+        if (d.code === 200) {
+            document.getElementById('stat-total').textContent = d.data.total;
+            document.getElementById('stat-todo').textContent = d.data.todo;
+            document.getElementById('stat-doing').textContent = d.data.doing;
+            document.getElementById('stat-done').textContent = d.data.done;
+            document.getElementById('stat-closed').textContent = d.data.closed;
+        }
+    } catch (e) {}
+}
+
+// 创建任务
+function openCreateModal() { document.getElementById('create-modal').style.display = ''; }
+function closeCreateModal() { document.getElementById('create-modal').style.display = 'none'; }
+async function submitCreate(e) {
+    e.preventDefault();
+    const form = document.getElementById('create-form');
+    const fd = new FormData(form), data = {};
+    fd.forEach((v, k) => { if (v) data[k] = v; });
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true; btn.textContent = '创建中...';
+    try {
+        const r = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const res = await r.json();
+        if (res.code === 200) { showToast('任务创建成功', 'success'); closeCreateModal(); form.reset(); refreshStats(); location.reload(); }
+        else showToast(res.message || '创建失败', 'error');
+    } catch (e) { showToast('请求失败', 'error'); }
+    finally { btn.disabled = false; btn.textContent = '创建任务'; }
+}
+
+// 任务详情
+const pLabels = { urgent: '紧急', high: '高', medium: '中', low: '低' };
+const sLabels = { todo: '待办', doing: '进行中', done: '已完成', closed: '已关闭' };
+let currentTask = null;
+let isEditing = false;
+
+async function openDetail(id) {
+    try {
+        const r = await fetch('/api/tasks/' + id);
+        const d = await r.json();
+        if (d.code !== 200) return;
+        currentTask = d.data;
+        renderDetail(currentTask);
+        document.getElementById('detail-modal').style.display = '';
+    } catch (e) { showToast('加载失败', 'error'); }
+}
+
+function renderDetail(t) {
+    isEditing = false;
+    document.getElementById('detail-code').textContent = t.task_code + ' - ' + (pLabels[t.priority] || t.priority);
+    document.getElementById('detail-body').innerHTML = `
+        <h4 style="font-size:18px;font-weight:600;margin-bottom:16px">${t.title}</h4>
+        <div class="detail-grid">
+            <div class="detail-item"><span class="detail-label">序号</span><span>${t.id}</span></div>
+            <div class="detail-item"><span class="detail-label">类别</span><span>${t.category || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">项目类别</span><span>${t.project_category || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">任务名称</span><span>${t.title}</span></div>
+            <div class="detail-item"><span class="detail-label">测试工程师</span><span>${t.test_engineer || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">委托人</span><span>${t.client || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">接收委托时间</span><span>${t.commission_time || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">委托需求完成时间</span><span>${t.commission_deadline || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">研发目标完成时间</span><span>${t.dev_target_time || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">拿到样品时间</span><span>${t.sample_time || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">实际完成时间</span><span>${t.actual_complete_time || '-'}</span></div>
+            <div class="detail-item"><span class="detail-label">进度</span>
+                <div style="display:flex;align-items:center;gap:8px;flex:1">
+                    <div style="flex:1;background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden"><div style="background:var(--qcc-primary);height:100%;width:${t.progress||0}%;border-radius:4px"></div></div>
+                    <span>${t.progress||0}%</span>
+                </div>
+            </div>
+            <div class="detail-item"><span class="detail-label">状态</span>
+                <select class="form-select" style="width:auto;padding:4px 8px;font-size:12px" onchange="changeStatus(${t.id}, this.value)">
+                    <option value="todo" ${t.status==='todo'?'selected':''}>待办</option>
+                    <option value="doing" ${t.status==='doing'?'selected':''}>进行中</option>
+                    <option value="done" ${t.status==='done'?'selected':''}>已完成</option>
+                    <option value="closed" ${t.status==='closed'?'selected':''}>已关闭</option>
+                </select>
+            </div>
+            <div class="detail-item"><span class="detail-label">备注</span><span>${t.remark || '-'}</span></div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--qcc-border-lighter)">
+            <div class="detail-item"><span class="detail-label">描述</span><span style="white-space:pre-wrap">${t.description || '无描述'}</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="closeDetailModal()">关闭</button>
+            <button class="btn btn-secondary btn-sm" onclick="startEdit()">编辑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTask(${t.id})">删除</button>
+        </div>
+    `;
+}
+
+function startEdit() {
+    if (!currentTask) return;
+    isEditing = true;
+    const t = currentTask;
+    document.getElementById('detail-code').textContent = '编辑 - ' + t.task_code;
+
+    function val(v) { return v && v !== 'null' && v !== 'undefined' ? v : ''; }
+    function dtVal(v) { return val(v).replace(' ', 'T').substring(0, 16); }
+    function dateVal(v) { return val(v).substring(0, 10); }
+
+    document.getElementById('detail-body').innerHTML = `
+        <form id="edit-form" onsubmit="saveEdit(event)" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div><label class="form-label">类别</label><input name="category" class="form-input" value="${val(t.category)}"></div>
+                <div><label class="form-label">项目类别</label><input name="project_category" class="form-input" value="${val(t.project_category)}"></div>
+            </div>
+            <div><label class="form-label">任务名称 *</label><input name="title" class="form-input" required value="${val(t.title)}"></div>
+            <div><label class="form-label">描述</label><textarea name="description" class="form-input" rows="2" style="resize:vertical">${val(t.description)}</textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div><label class="form-label">测试工程师</label><input name="test_engineer" class="form-input" value="${val(t.test_engineer)}"></div>
+                <div><label class="form-label">委托人</label><input name="client" class="form-input" value="${val(t.client)}"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div><label class="form-label">优先级</label>
+                    <select name="priority" class="form-select">
+                        <option value="medium" ${t.priority==='medium'?'selected':''}>中</option>
+                        <option value="urgent" ${t.priority==='urgent'?'selected':''}>紧急</option>
+                        <option value="high" ${t.priority==='high'?'selected':''}>高</option>
+                        <option value="low" ${t.priority==='low'?'selected':''}>低</option>
+                    </select>
+                </div>
+                <div><label class="form-label">状态</label>
+                    <select name="status" class="form-select">
+                        <option value="todo" ${t.status==='todo'?'selected':''}>待办</option>
+                        <option value="doing" ${t.status==='doing'?'selected':''}>进行中</option>
+                        <option value="done" ${t.status==='done'?'selected':''}>已完成</option>
+                        <option value="closed" ${t.status==='closed'?'selected':''}>已关闭</option>
+                    </select>
+                </div>
+                <div><label class="form-label">进度 (%)</label><input name="progress" type="number" class="form-input" min="0" max="100" value="${t.progress||0}"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div><label class="form-label">接收委托时间</label><input name="commission_time" type="datetime-local" class="form-input" value="${dtVal(t.commission_time)}"></div>
+                <div><label class="form-label">委托需求完成时间</label><input name="commission_deadline" type="date" class="form-input" value="${dateVal(t.commission_deadline)}"></div>
+                <div><label class="form-label">研发目标完成时间</label><input name="dev_target_time" type="date" class="form-input" value="${dateVal(t.dev_target_time)}"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <div><label class="form-label">拿到样品时间</label><input name="sample_time" type="date" class="form-input" value="${dateVal(t.sample_time)}"></div>
+                <div><label class="form-label">实际完成时间</label><input name="actual_complete_time" type="date" class="form-input" value="${dateVal(t.actual_complete_time)}"></div>
+                <div><label class="form-label">截止日期</label><input name="deadline" type="date" class="form-input" value="${dateVal(t.deadline)}"></div>
+            </div>
+            <div><label class="form-label">备注</label><input name="remark" class="form-input" value="${val(t.remark)}"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+                <button type="button" class="btn btn-ghost" onclick="renderDetail(currentTask)">取消</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-edit">保存</button>
+            </div>
+        </form>
+    `;
+}
+
+async function saveEdit(e) {
+    e.preventDefault();
+    const form = document.getElementById('edit-form');
+    const fd = new FormData(form), data = {};
+    fd.forEach((v, k) => { data[k] = v; });
+
+    if (!data.title || !data.title.trim()) {
+        showToast('任务名称不能为空', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-edit');
+    btn.disabled = true; btn.textContent = '保存中...';
+
+    try {
+        const r = await fetch('/api/tasks/' + currentTask.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const res = await r.json();
+        if (res.code === 200) {
+            showToast('保存成功', 'success');
+            // 重新加载详情
+            const r2 = await fetch('/api/tasks/' + currentTask.id);
+            const d2 = await r2.json();
+            if (d2.code === 200) {
+                currentTask = d2.data;
+                renderDetail(currentTask);
+            }
+            refreshStats();
+        } else {
+            showToast(res.message || '保存失败', 'error');
+        }
+    } catch (err) {
+        showToast('保存失败', 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = '保存';
+    }
+}
+function closeDetailModal() { document.getElementById('detail-modal').style.display = 'none'; }
+
+async function changeStatus(id, status) {
+    try {
+        var r = await fetch('/api/tasks/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) });
+        if (r.ok) {
+            showToast('状态已更新', 'success');
+            var card = document.querySelector('.kanban-card[data-id="' + id + '"]');
+            if (card) { card.remove(); document.getElementById('body-' + status).appendChild(card); }
+            updateEmptyStates();
+            refreshStats();
+        } else showToast('更新失败', 'error');
+    } catch (err) { showToast('操作失败', 'error'); }
+}
+
+async function deleteTask(id) {
+    if (!confirm('确认删除此任务？')) return;
+    try {
+        var r = await fetch('/api/tasks/' + id, { method: 'DELETE' });
+        if (r.ok) {
+            showToast('删除成功', 'success');
+            closeDetailModal();
+            var card = document.querySelector('.kanban-card[data-id="' + id + '"]');
+            if (card) card.remove();
+            updateEmptyStates();
+            refreshStats();
+        } else showToast('删除失败', 'error');
+    } catch (err) { showToast('删除失败', 'error'); }
+}
+</script>
+{% endblock %}

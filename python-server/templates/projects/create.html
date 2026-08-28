@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}创建项目 - QCC{% endblock %}
+{% block head %}
+<style>
+.form-card{max-width:640px;margin:0 auto}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--qcc-space-lg)}
+.form-grid .full{grid-column:1/-1}
+</style>
+{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main"><div class="app-content animate-in">
+        {{ hero.page_hero("创建项目", "选择模板，填写基本信息即可创建测试项目") }}
+
+        <div class="card form-card"><div class="card-body">
+            <form id="create-form" @submit.prevent="
+                const fd = new FormData($el);
+                const data = Object.fromEntries(fd);
+                if(!data.template_id){error='请选择报告模板';return}
+                if(!data.product_model){error='请填写产品型号';return}
+                if(!data.product_name){error='请填写产品名称';return}
+                if(!data.tester){error='请填写测试员';return}
+                submitting=true;
+                fetch('/page/projects/create',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({...data,template_id:parseInt(data.template_id)})
+                }).then(r=>r.json()).then(d=>{
+                    if(d.code===200)location.href='/page/projects/'+d.data.id+'/records';
+                    else error=d.message;
+                    submitting=false;
+                });
+            " x-data="{ error:'', submitting:false }">
+                <div x-show="error" style="color:var(--qcc-danger);margin-bottom:16px;font-size:13px" x-text="error"></div>
+
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label class="form-label">报告模板 *</label>
+                        <select name="template_id" class="form-select" required>
+                            <option value="">-- 请选择报告模板 --</option>
+                            {% for t in templates %}
+                            <option value="{{ t.id }}">{{ t.template_code }} - {{ t.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">产品型号 *</label>
+                        <input name="product_model" class="form-input" placeholder="如: TF27S2-QAJ0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">产品名称 *</label>
+                        <input name="product_name" class="form-input" placeholder="如: 信创台式机" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">测试员 *</label>
+                        <input name="tester" class="form-input" placeholder="测试员姓名" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">审核员</label>
+                        <input name="reviewer" class="form-input" placeholder="审核员姓名">
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label">测试类型</label>
+                        <select name="test_type" class="form-select">
+                            <option value="new">新项目测试</option>
+                            <option value="regression">回归测试</option>
+                            <option value="patch">补丁验证</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top:24px;display:flex;gap:12px;justify-content:flex-end">
+                    <a href="/page/projects" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn btn-primary" :disabled="submitting">
+                        <span x-show="!submitting">创建项目</span>
+                        <span x-show="submitting">创建中...</span>
+                    </button>
+                </div>
+            </form>
+        </div></div>
+    </div></main>
+</div>
+{% endblock %}

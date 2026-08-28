@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}产品管理 - QCC{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main"><div class="app-content animate-in" style="max-width:1200px">
+        {{ hero.page_hero("产品管理", products|length ~ " 个产品") }}
+
+        <div class="stat-grid">
+            {% for p in products %}
+            <div class="stat-card" style="text-align:left;padding:20px">
+                <div class="text-mono">{{ p.product_code }}</div>
+                <div style="font-size:var(--qcc-font-size-lg);font-weight:var(--qcc-font-weight-semibold);margin:6px 0 4px">{{ p.name }}</div>
+                <div class="text-muted">{{ p.line_name or '未分组' }}</div>
+                <div style="margin-top:12px">
+                    <span class="tag {% if p.status=='active' %}tag-success{% else %}tag-info{% endif %}">{{ p.status }}</span>
+                </div>
+                <div class="summary-strip" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--qcc-border-lighter)">
+                    <span>📋 {{ p.project_count }} 项目</span>
+                    <span>📝 {{ p.requirement_count }} 需求</span>
+                    <span>✅ {{ p.task_count }} 任务</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% if products|length==0 %}
+            <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📦</div><div class="empty-title">暂无产品</div></div>
+            {% endif %}
+        </div>
+    </div></main>
+</div>
+{% endblock %}

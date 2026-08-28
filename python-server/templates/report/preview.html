@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}报告预览 — {{ project.product_name }}{% endblock %}
+{% block body %}
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content">
+            <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <h1 class="page-title">报告预览</h1>
+                    <p class="page-desc">{{ project.project_code }} — {{ project.product_name }}</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="generateReport()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        生成报告
+                    </button>
+                    <button class="btn btn-secondary" id="btn-download" style="display:none" onclick="downloadReport()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        下载HTML
+                    </button>
+                    <button class="btn btn-secondary" id="btn-print" style="display:none" onclick="printReport()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        打印/导出PDF
+                    </button>
+                    <a href="/page/projects/{{ project.id }}" class="btn btn-ghost">返回项目</a>
+                </div>
+            </div>
+
+            <div id="report-status" style="margin-bottom:16px;"></div>
+
+            <!-- 报告预览区域 -->
+            <div id="report-preview-container" style="background:#fff;border-radius:var(--qcc-radius-lg);border:1px solid var(--qcc-border);overflow:hidden;">
+                <div id="report-placeholder" style="text-align:center;padding:80px 20px;color:var(--qcc-text-muted);">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px;opacity:0.4">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <p style="font-size:16px;margin-bottom:8px;">尚未生成报告</p>
+                    <p style="font-size:13px;">点击上方"生成报告"按钮，系统将自动汇总测试记录和Bug数据生成报告</p>
+                </div>
+                <iframe id="report-iframe" style="display:none;width:100%;height:800px;border:none;"></iframe>
+            </div>
+
+            <!-- 已生成的报告列表 -->
+            <div style="margin-top:24px;">
+                <h3 style="font-size:15px;color:var(--qcc-text-primary);margin-bottom:12px;">历史报告</h3>
+                <div id="artifacts-list" style="background:#fff;border-radius:var(--qcc-radius-lg);border:1px solid var(--qcc-border);">
+                    <div style="text-align:center;padding:30px;color:var(--qcc-text-muted);font-size:13px;">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div id="delete-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="width:40px;height:40px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <h3 style="font-size:16px;font-weight:600;color:#1f2937;">确认删除</h3>
+        </div>
+        <p style="font-size:14px;color:#4b5563;margin-bottom:20px;">确定删除该历史报告？删除后数据将无法恢复。</p>
+        <div id="delete-file-info" style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:20px;font-size:13px;color:#6b7280;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="btn btn-ghost" onclick="closeDeleteModal()">取消</button>
+            <button class="btn btn-danger" id="btn-confirm-delete" onclick="confirmDelete()">
+                <span id="delete-btn-text">确认删除</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const PROJECT_ID = {{ project.id }};
+let deletingArtifactId = null;
+
+// 生成报告
+async function generateReport() {
+    const statusEl = document.getElementById('report-status');
+    statusEl.innerHTML = '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;color:#1e40af;font-size:13px;">正在生成报告，请稍候...</div>';
+
+    try {
+        const resp = await fetch(`/api/projects/${PROJECT_ID}/report/generate`, { method: 'POST' });
+        const text = await resp.text();
+        let data;
+        try { data = JSON.parse(text); } catch(e) { data = null; }
+
+        if (data && data.code === 200) {
+            statusEl.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;color:#166534;font-size:13px;">
+                报告生成成功！文件：${data.data.filename}（${(data.data.file_size / 1024).toFixed(1)} KB）
+            </div>`;
+
+            loadPreview();
+            loadArtifacts();
+            document.getElementById('btn-download').style.display = '';
+            document.getElementById('btn-print').style.display = '';
+        } else {
+            const msg = data ? data.message : `服务器返回非JSON响应 (status=${resp.status})`;
+            statusEl.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#991b1b;font-size:13px;">
+                生成失败：${msg}
+            </div>`;
+        }
+    } catch (err) {
+        statusEl.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#991b1b;font-size:13px;">
+            请求失败：${err.message}
+        </div>`;
+    }
+}
+
+// 加载预览
+function loadPreview() {
+    const iframe = document.getElementById('report-iframe');
+    const placeholder = document.getElementById('report-placeholder');
+    iframe.src = `/api/projects/${PROJECT_ID}/report/preview`;
+    iframe.style.display = 'block';
+    placeholder.style.display = 'none';
+}
+
+// 下载HTML报告
+function downloadReport() {
+    const iframe = document.getElementById('report-iframe');
+    if (!iframe.src || iframe.style.display === 'none') {
+        showToast('请先生成报告', 'warning');
+        return;
+    }
+    window.open(`/api/projects/${PROJECT_ID}/report/preview`, '_blank');
+}
+
+// 打印报告
+function printReport() {
+    const iframe = document.getElementById('report-iframe');
+    if (!iframe.src || iframe.style.display === 'none') {
+        showToast('请先生成报告', 'warning');
+        return;
+    }
+    const win = window.open(`/api/projects/${PROJECT_ID}/report/preview`, '_blank');
+    win.onload = () => { win.print(); };
+}
+
+// 加载历史报告列表
+async function loadArtifacts() {
+    const el = document.getElementById('artifacts-list');
+    try {
+        const resp = await fetch(`/api/projects/${PROJECT_ID}/report/artifacts`);
+        const data = await resp.json();
+        if (data.code === 200 && data.data.length > 0) {
+            loadPreview();
+            document.getElementById('btn-download').style.display = '';
+            document.getElementById('btn-print').style.display = '';
+            el.innerHTML = data.data.map(a => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f1f5f9;" id="artifact-${a.id}">
+                    <div>
+                        <div style="font-size:14px;font-weight:500;">${a.file_name}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">${(a.file_size / 1024).toFixed(1)} KB · ${a.created_at}</div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadPreview()">预览</button>
+                        <button class="btn btn-danger" style="font-size:12px;padding:4px 12px;" onclick="openDeleteModal(${a.id}, '${a.file_name}', ${a.file_size}, '${a.created_at}')">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            删除
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;font-size:13px;">暂无历史报告</div>';
+        }
+    } catch (err) {
+        el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;font-size:13px;">加载失败</div>';
+    }
+}
+
+// 打开删除确认弹窗
+function openDeleteModal(artifactId, fileName, fileSize, createdAt) {
+    deletingArtifactId = artifactId;
+    document.getElementById('delete-file-info').innerHTML = `
+        <div><strong>文件名：</strong>${fileName}</div>
+        <div><strong>大小：</strong>${(fileSize / 1024).toFixed(1)} KB</div>
+        <div><strong>创建时间：</strong>${createdAt}</div>
+    `;
+    document.getElementById('delete-modal').style.display = 'flex';
+    document.getElementById('btn-confirm-delete').disabled = false;
+    document.getElementById('delete-btn-text').textContent = '确认删除';
+}
+
+// 关闭删除弹窗
+function closeDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+    deletingArtifactId = null;
+}
+
+// 确认删除
+async function confirmDelete() {
+    if (!deletingArtifactId) return;
+
+    const artifactId = deletingArtifactId; // 先保存ID
+    const btn = document.getElementById('btn-confirm-delete');
+    const btnText = document.getElementById('delete-btn-text');
+    btn.disabled = true;
+    btnText.textContent = '删除中...';
+
+    try {
+        const resp = await fetch(`/api/projects/${PROJECT_ID}/report/artifacts/${artifactId}`, {
+            method: 'DELETE'
+        });
+        const data = await resp.json();
+
+        if (data.code === 200) {
+            showToast('报告删除成功', 'success');
+            closeDeleteModal();
+            // 从列表中移除已删除的条目
+            const el = document.getElementById(`artifact-${artifactId}`);
+            if (el) {
+                el.style.transition = 'opacity 0.3s';
+                el.style.opacity = '0';
+                setTimeout(() => {
+                    el.remove();
+                    // 检查列表是否为空
+                    const list = document.getElementById('artifacts-list');
+                    if (list.children.length === 0) {
+                        list.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;font-size:13px;">暂无历史报告</div>';
+                    }
+                }, 300);
+            }
+        } else {
+            showToast(data.message || '删除失败，请稍后重试', 'error');
+            btn.disabled = false;
+            btnText.textContent = '确认删除';
+        }
+    } catch (err) {
+        showToast('删除失败，请稍后重试', 'error');
+        btn.disabled = false;
+        btnText.textContent = '确认删除';
+    }
+}
+
+// 页面加载时获取历史报告
+loadArtifacts();
+</script>
+{% endblock %}

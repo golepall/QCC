@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}需求管理 - QCC{% endblock %}
+{% block body %}
+{% import "components/page_hero.html" as hero %}
+{% import "components/stat_card.html" as stat %}
+
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1400px">
+            {{ hero.page_hero("需求管理", "管理业务需求、用户需求和开发需求，追踪全生命周期。") }}
+
+            <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                {{ stat.stat_card("需求总数", stats.total, "📋", "primary") }}
+                {{ stat.stat_card("进行中", stats.active, "🔄", "warning") }}
+                {{ stat.stat_card("已完成", stats.completed, "✅", "success") }}
+                {{ stat.stat_card("草稿", stats.draft, "📝", "info") }}
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <select name="req_type" class="form-select" style="width:auto;min-width:120px"
+                                hx-get="/page/requirements/list" hx-target="#req-tbl" hx-trigger="change"
+                                hx-include="[name='status'],[name='priority'],[name='keyword']">
+                            <option value="">全部类型</option>
+                            <option value="business">业务需求</option>
+                            <option value="user">用户需求</option>
+                            <option value="develop">开发需求</option>
+                        </select>
+                        <select name="status" class="form-select" style="width:auto;min-width:120px"
+                                hx-get="/page/requirements/list" hx-target="#req-tbl" hx-trigger="change"
+                                hx-include="[name='req_type'],[name='priority'],[name='keyword']">
+                            <option value="">全部状态</option>
+                            <option value="draft">草稿</option>
+                            <option value="active">已激活</option>
+                            <option value="developing">开发中</option>
+                            <option value="testing">测试中</option>
+                            <option value="completed">已完成</option>
+                            <option value="closed">已关闭</option>
+                        </select>
+                        <select name="priority" class="form-select" style="width:auto;min-width:100px"
+                                hx-get="/page/requirements/list" hx-target="#req-tbl" hx-trigger="change"
+                                hx-include="[name='req_type'],[name='status'],[name='keyword']">
+                            <option value="">全部优先级</option>
+                            <option value="urgent">紧急</option>
+                            <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
+                        </select>
+                        <input name="keyword" class="form-input" placeholder="搜索需求编号/标题..." style="width:200px"
+                               hx-get="/page/requirements/list" hx-target="#req-tbl" hx-trigger="input changed delay:300ms"
+                               hx-include="[name='req_type'],[name='status'],[name='priority']">
+                    </div>
+                    <button class="btn btn-primary btn-sm" @click="showCreate=true">+ 新建需求</button>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div id="req-tbl">
+                        {% include "components/requirement_table.html" %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 创建需求弹窗 -->
+            <div x-data="{ showCreate:false }" x-show="showCreate" x-cloak
+                 style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)"
+                 @keydown.escape.window="showCreate=false">
+                <div class="card" style="width:560px;max-height:85vh;overflow-y:auto" @click.stop>
+                    <div class="card-header">
+                        <h3>新建需求</h3>
+                        <button class="btn btn-ghost btn-xs" @click="showCreate=false">&times;</button>
+                    </div>
+                    <div class="card-body">
+                        <form @submit.prevent="createReq($el)" style="display:flex;flex-direction:column;gap:14px">
+                            <div>
+                                <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">需求类型</label>
+                                <select name="req_type" class="form-select" required>
+                                    <option value="business">业务需求 (BR-)</option>
+                                    <option value="user">用户需求 (UR-)</option>
+                                    <option value="develop">开发需求 (DR-)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">标题</label>
+                                <input name="title" class="form-input" placeholder="需求标题" required>
+                            </div>
+                            <div>
+                                <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">描述</label>
+                                <textarea name="description" class="form-input" rows="3" placeholder="需求详细描述" style="resize:vertical"></textarea>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                                <div>
+                                    <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">优先级</label>
+                                    <select name="priority" class="form-select">
+                                        <option value="medium">中</option>
+                                        <option value="urgent">紧急</option>
+                                        <option value="high">高</option>
+                                        <option value="low">低</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">截止日期</label>
+                                    <input name="deadline" type="date" class="form-input">
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                                <div>
+                                    <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">来源</label>
+                                    <input name="source" class="form-input" placeholder="需求来源">
+                                </div>
+                                <div>
+                                    <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">所属模块</label>
+                                    <input name="module" class="form-input" placeholder="所属模块">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size:var(--qcc-font-size-xs);font-weight:var(--qcc-font-weight-semibold);color:var(--qcc-text-secondary);display:block;margin-bottom:4px">验收标准</label>
+                                <textarea name="acceptance" class="form-input" rows="2" placeholder="验收标准" style="resize:vertical"></textarea>
+                            </div>
+                            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+                                <button type="button" class="btn btn-ghost" @click="showCreate=false">取消</button>
+                                <button type="submit" class="btn btn-primary">创建</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+async function createReq(form) {
+    const fd = new FormData(form);
+    const data = {};
+    fd.forEach((v, k) => { if (v) data[k] = v; });
+    try {
+        const r = await fetch('/api/requirements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const res = await r.json();
+        if (r.ok) {
+            location.reload();
+        } else {
+            showToast(res.detail || '创建失败', 'error');
+        }
+    } catch (e) { showToast('请求失败: ' + e.message, 'error'); }
+}
+</script>
+
+{% endblock %}

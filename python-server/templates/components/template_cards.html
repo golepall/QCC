@@ -1,0 +1,17 @@
+{% for t in templates %}
+<div class="card" style="padding:20px">
+    <div class="text-mono" style="margin-bottom:8px">{{ t.template_code }}</div>
+    <div style="font-weight:600;font-size:16px;margin-bottom:6px">{{ t.name }}</div>
+    <div class="text-muted" style="margin-bottom:10px">{{ t.doc_code }} v{{ t.version }}</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+        <span class="tag tag-primary">{{ t.category }}</span>
+        <span class="tag tag-info">{{ t.product_type }}</span>
+    </div>
+    <div style="text-align:right">
+        <a href="#" class="btn btn-primary btn-sm">创建项目</a>
+    </div>
+</div>
+{% endfor %}
+{% if templates|length==0 %}
+<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📄</div><div class="empty-title">暂无匹配的模板</div></div>
+{% endif %}

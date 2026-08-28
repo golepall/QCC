@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 - QCC{% endblock %}
+{% block body %}
+{% import "components/stat_card.html" as stat %}
+{% import "components/page_hero.html" as hero %}
+
+<div class="app-shell">
+    {% include "components/sidebar.html" %}
+    <main class="app-main">
+        <div class="app-content animate-in" style="max-width:1200px">
+            {{ hero.page_hero("仪表盘", "欢迎回来，" + user.display_name + "。以下是您的测试项目概况。") }}
+
+            <div class="stat-grid">
+                {{ stat.stat_card("项目总数", stats.projects, "📋", "primary") }}
+                {{ stat.stat_card("Bug 总数", stats.bugs, "🐛", "danger") }}
+                {{ stat.stat_card("任务总数", stats.tasks, "✅", "success") }}
+                {{ stat.stat_card("模板总数", stats.templates, "📄", "info") }}
+            </div>
+
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--qcc-space-lg)">
+                <div class="card" style="padding:24px">
+                    <h3 style="margin-bottom:16px;font-size:var(--qcc-font-size-lg);font-weight:var(--qcc-font-weight-semibold)">快捷入口</h3>
+                    <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin:0">
+                        <a href="/page/projects" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-primary" style="margin:0 auto 10px">📋</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">项目管理</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">创建和管理测试项目</div>
+                            </div>
+                        </a>
+                        <a href="/page/bugs" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-danger" style="margin:0 auto 10px">🐛</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">Bug 管理</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">追踪和解决缺陷</div>
+                            </div>
+                        </a>
+                        <a href="/page/templates" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-info" style="margin:0 auto 10px">📄</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">报告模板</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">管理测试报告模板</div>
+                            </div>
+                        </a>
+                        <a href="/page/requirements" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-warning" style="margin:0 auto 10px">📝</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">需求管理</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">管理测试需求</div>
+                            </div>
+                        </a>
+                        <a href="/page/tasks" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-success" style="margin:0 auto 10px">✅</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">任务看板</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">管理测试任务</div>
+                            </div>
+                        </a>
+                        <a href="/page/report" style="text-decoration:none;color:inherit">
+                            <div class="stat-card" style="text-align:center;padding:20px 16px">
+                                <div class="stat-icon stat-icon-primary" style="margin:0 auto 10px">📊</div>
+                                <div style="font-weight:var(--qcc-font-weight-semibold);font-size:var(--qcc-font-size-sm)">报告中心</div>
+                                <div style="font-size:var(--qcc-font-size-xs);color:var(--qcc-text-secondary);margin-top:4px">查看和导出报告</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card" style="padding:24px">
+                    <h3 style="font-size:var(--qcc-font-size-lg);font-weight:var(--qcc-font-weight-semibold);margin-bottom:16px">最近活动</h3>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                        {% if activities %}
+                            {% for a in activities %}
+                            <div style="display:flex;align-items:flex-start;gap:10px;font-size:13px">
+                                <div style="width:8px;height:8px;border-radius:50%;background:var(--qcc-primary);flex-shrink:0;margin-top:5px"></div>
+                                <div>
+                                    <div><strong>{{ a.user_name or '系统' }}</strong> {{ a.action }}</div>
+                                    <div style="color:var(--qcc-text-secondary);font-size:11px">{{ a.detail or '' }}</div>
+                                    <div style="color:var(--qcc-text-placeholder);font-size:11px">{{ a.created_at }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                                <div style="width:8px;height:8px;border-radius:50%;background:var(--qcc-primary);flex-shrink:0"></div>
+                                <span style="color:var(--qcc-text-secondary)">系统就绪，等待操作</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近项目 -->
+            {% if recent_projects %}
+            <div class="card" style="margin-top:var(--qcc-space-lg)">
+                <div class="card-header"><h3>最近项目</h3><a href="/page/projects" class="btn btn-ghost btn-sm">查看全部</a></div>
+                <div class="card-body" style="padding:0">
+                    <table class="table">
+                        <thead><tr><th>编号</th><th>产品</th><th>测试员</th><th>模板</th><th>状态</th><th>创建时间</th></tr></thead>
+                        <tbody>
+                        {% for p in recent_projects %}
+                        <tr>
+                            <td><a href="/page/projects/{{ p.id }}" class="text-mono">{{ p.project_code }}</a></td>
+                            <td>{{ p.product_name }}</td>
+                            <td>{{ p.tester }}</td>
+                            <td class="text-muted">{{ p.template_name }}</td>
+                            <td>
+                                {% if p.status=='draft' %}<span class="tag tag-info">草稿</span>
+                                {% elif p.status=='testing' %}<span class="tag tag-warning">测试中</span>
+                                {% elif p.status=='completed' %}<span class="tag tag-success">已完成</span>
+                                {% else %}<span class="tag tag-info">{{ p.status }}</span>{% endif %}
+                            </td>
+                            <td class="text-muted">{{ p.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
